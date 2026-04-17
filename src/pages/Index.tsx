@@ -44,6 +44,9 @@ export default function Index() {
   const [role, setRole] = useState<Role>(() => {
     return (localStorage.getItem("routine-role") as Role) || null;
   });
+  const [isChangingRole, setIsChangingRole] = useState(() => {
+    return !localStorage.getItem("routine-role");
+  });
   const [semester, setSemester] = useState(() => Number(localStorage.getItem("routine-semester")) || 1);
   const [section, setSection] = useState(() => localStorage.getItem("routine-section") || "A");
   const [selectedTeacher, setSelectedTeacher] = useState(() => localStorage.getItem("routine-teacher") || "");
@@ -108,6 +111,12 @@ export default function Index() {
   const [newInfoGid, setNewInfoGid] = useState("");
   const [newGithubUsername, setNewGithubUsername] = useState("");
   const [newAdminEmail, setNewAdminEmail] = useState("");
+  
+  const [devName, setDevName] = useState("");
+  const [devStudentId, setDevStudentId] = useState("");
+  const [devFacebook, setDevFacebook] = useState("");
+  const [devLinkedin, setDevLinkedin] = useState("");
+  const [devWhatsapp, setDevWhatsapp] = useState("");
 
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (u) => {
@@ -129,11 +138,26 @@ export default function Index() {
 
     const unsubSettings = onSnapshot(doc(db, "settings", "global"), (s) => {
       if (s.exists()) {
-        const data = s.data() as { mainSheetUrl: string; infoGid: string; githubUsername?: string; adminEmails?: string[] };
+        const data = s.data() as { 
+          mainSheetUrl: string; 
+          infoGid: string; 
+          githubUsername?: string; 
+          adminEmails?: string[];
+          devName?: string;
+          devStudentId?: string;
+          devFacebook?: string;
+          devLinkedin?: string;
+          devWhatsapp?: string;
+        };
         setAdminSettings(prev => ({ ...prev, ...data }));
         setNewMainSheetUrl(data.mainSheetUrl);
         setNewInfoGid(data.infoGid);
         setNewGithubUsername(data.githubUsername || "mafikul01");
+        setDevName(data.devName || "Mafikul Islam");
+        setDevStudentId(data.devStudentId || "232311070");
+        setDevFacebook(data.devFacebook || "mafikul01");
+        setDevLinkedin(data.devLinkedin || "mafikul01");
+        setDevWhatsapp(data.devWhatsapp || "01788302771");
       }
     });
 
@@ -202,7 +226,12 @@ export default function Index() {
         ...adminSettings,
         mainSheetUrl: newMainSheetUrl,
         infoGid: newInfoGid,
-        githubUsername: newGithubUsername
+        githubUsername: newGithubUsername,
+        devName,
+        devStudentId,
+        devFacebook,
+        devLinkedin,
+        devWhatsapp
       });
       toast.success("App settings updated");
     } catch (e) {
@@ -342,12 +371,46 @@ export default function Index() {
 
   const handleRoleSelect = (r: Role) => {
     setRole(r);
+    setIsChangingRole(false);
     if (r === "teacher" && !selectedTeacher && teachers.length > 0) {
       setSelectedTeacher(teachers[0]);
     }
   };
 
-  if (!role) {
+  if (isChangingRole || !role) {
+    // Current role will be in 2nd position, other role in 1st.
+    const isStudent = role === "student";
+    
+    const StudentBtn = () => (
+      <button
+        onClick={() => handleRoleSelect("student")}
+        className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-all hover:shadow-md ${role === "student" ? "border-green-500 bg-green-50/10" : role ? "border-sky-400 bg-sky-50/10" : "bg-card hover:border-primary"}`}
+      >
+        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${role === "student" ? "bg-green-500/10 text-green-600" : "bg-primary/10 text-primary"}`}>
+          <GraduationCap className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="font-heading font-semibold text-foreground">Student</p>
+          <p className="text-xs text-muted-foreground">View your section's routine</p>
+        </div>
+      </button>
+    );
+
+    const TeacherBtn = () => (
+      <button
+        onClick={() => handleRoleSelect("teacher")}
+        className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-all hover:shadow-md ${role === "teacher" ? "border-green-500 bg-green-50/10" : role ? "border-sky-400 bg-sky-50/10" : "bg-card hover:border-primary"}`}
+      >
+        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${role === "teacher" ? "bg-green-500/10 text-green-600" : "bg-blue-500/10 text-blue-600"}`}>
+          <User className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="font-heading font-semibold text-foreground">Teacher</p>
+          <p className="text-xs text-muted-foreground">View your daily classes</p>
+        </div>
+      </button>
+    );
+
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="w-full max-w-sm space-y-6 text-center">
@@ -359,31 +422,20 @@ export default function Index() {
             <p className="mt-1 text-sm text-muted-foreground">CSE Department</p>
           </div>
           <div className="space-y-3">
-            <p className="text-sm font-medium text-muted-foreground">I am a</p>
-            <button
-              onClick={() => handleRoleSelect("student")}
-              className="flex w-full items-center gap-3 rounded-xl border bg-card p-4 text-left transition-all hover:border-primary hover:shadow-md"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <GraduationCap className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="font-heading font-semibold">Student</p>
-                <p className="text-xs text-muted-foreground">View your section's routine</p>
-              </div>
-            </button>
-            <button
-              onClick={() => handleRoleSelect("teacher")}
-              className="flex w-full items-center gap-3 rounded-xl border bg-card p-4 text-left transition-all hover:border-primary hover:shadow-md"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
-                <User className="h-5 w-5 text-accent" />
-              </div>
-              <div>
-                <p className="font-heading font-semibold">Teacher</p>
-                <p className="text-xs text-muted-foreground">View your daily classes</p>
-              </div>
-            </button>
+            <p className="text-sm font-medium text-muted-foreground">
+              {role ? "Change your role" : "I am a"}
+            </p>
+            {isStudent ? (
+              <>
+                <TeacherBtn />
+                <StudentBtn />
+              </>
+            ) : (
+              <>
+                <StudentBtn />
+                <TeacherBtn />
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -442,7 +494,7 @@ export default function Index() {
             <RefreshCcw className="h-4 w-4 text-secondary-foreground" />
           </button>
           <button
-            onClick={() => setRole(null)}
+            onClick={() => setIsChangingRole(true)}
             className="flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
           >
             <ArrowLeftRight className="h-3.5 w-3.5" />
@@ -549,45 +601,47 @@ export default function Index() {
 
       {/* Student: Semester picker */}
       {role === "student" && (
-        <>
-          <div className="mb-3">
+        <div className="mb-5 flex gap-3">
+          <div className="flex-1">
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Semester</label>
-            <div className="flex gap-1 overflow-x-auto pb-1">
-              {SEMESTERS.map(sem => (
-                <button
-                  key={sem}
-                  onClick={() => setSemester(sem)}
-                  className={`shrink-0 rounded-lg px-3.5 py-2 text-sm font-medium transition-all ${
-                    semester === sem
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                  }`}
-                >
-                  {sem}
-                </button>
-              ))}
+            <div className="relative">
+              <select
+                value={semester}
+                onChange={e => setSemester(Number(e.target.value))}
+                className="w-full appearance-none rounded-lg border bg-card py-2.5 pl-3 pr-8 text-sm outline-none focus:border-blue-500 font-medium"
+              >
+                {SEMESTERS.map(sem => (
+                  <option key={sem} value={sem}>{sem}{sem === 1 ? 'st' : sem === 2 ? 'nd' : sem === 3 ? 'rd' : 'th'} Semester</option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
             </div>
           </div>
 
-          <div className="mb-4">
+          <div className="flex-1">
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Section</label>
-            <div className="flex gap-1.5">
-              {availableSections.map(sec => (
-                <button
-                  key={sec}
-                  onClick={() => setSection(sec)}
-                  className={`flex-1 rounded-lg py-2 text-sm font-medium transition-all ${
-                    section === sec
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                  }`}
-                >
-                  {sec}
-                </button>
-              ))}
+            <div className="relative">
+              <select
+                value={section}
+                onChange={e => setSection(e.target.value)}
+                className="w-full appearance-none rounded-lg border bg-card py-2.5 pl-3 pr-8 text-sm outline-none focus:border-blue-500 font-medium"
+              >
+                {availableSections.map(sec => (
+                  <option key={sec} value={sec}>Section {sec}</option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* Teacher: Search picker */}
@@ -702,6 +756,12 @@ export default function Index() {
               </button>
             </div>
 
+            {/* Day picker for Room Finder */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">Select Day</label>
+              <DayPicker selectedDay={selectedDay} onSelectDay={setSelectedDay} />
+            </div>
+
             {roomFinderMode === "room" && (
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-foreground">Select Room</label>
@@ -745,29 +805,27 @@ export default function Index() {
 
             {roomFinderMode === "time" && (
               <div className="space-y-4">
-                <label className="block text-sm font-medium text-foreground">Select Time</label>
-                <div className="flex flex-col gap-2">
-                  {SLOTS.map(s => {
-                    const isSelected = selectedSlot === s.slot;
-                    return (
-                      <button
-                        key={s.slot}
-                        onClick={() => setSelectedSlot(s.slot)}
-                        className={`text-left rounded-lg px-4 py-3 text-sm font-medium transition-all border ${
-                          isSelected
-                            ? "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300 shadow-sm"
-                            : "bg-card border-border hover:border-blue-300"
-                        }`}
-                      >
+                <label className="block text-sm font-medium text-foreground">Select Time Slot</label>
+                <div className="relative">
+                  <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <select
+                    value={selectedSlot}
+                    onChange={e => setSelectedSlot(Number(e.target.value))}
+                    className="w-full appearance-none rounded-lg border bg-card py-2.5 pl-9 pr-3 text-sm outline-none focus:border-blue-500"
+                  >
+                    {SLOTS.map(s => (
+                      <option key={s.slot} value={s.slot}>
                         {s.start} - {s.end}
-                      </button>
-                    )
-                  })}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {selectedSlot && (
                   <div className="mt-4 space-y-3">
-                    <h4 className="text-sm font-medium text-muted-foreground border-b pb-2">Availability at {SLOTS.find(s => s.slot === selectedSlot)?.start} - {SLOTS.find(s => s.slot === selectedSlot)?.end}</h4>
+                    <h4 className="text-sm font-medium text-muted-foreground border-b pb-2">
+                      Availability at {SLOTS.find(s => s.slot === selectedSlot)?.start} - {SLOTS.find(s => s.slot === selectedSlot)?.end} on {selectedDay}
+                    </h4>
                     <div className="grid grid-cols-2 gap-2">
                       {allRooms.map(room => {
                         const classesInSlot = getClassesBySlot(selectedDay, selectedSlot);
@@ -952,15 +1010,15 @@ export default function Index() {
               <div className="h-24 w-24 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-xl relative overflow-hidden border-4 border-background">
                 <img 
                   src={`https://github.com/${adminSettings.githubUsername || "mafikul01"}.png`} 
-                  alt="Mafikul Islam" 
+                  alt="Developer" 
                   className="h-full w-full object-cover"
                   referrerPolicy="no-referrer"
                 />
               </div>
             </div>
             <div className="text-center space-y-1.5">
-              <h3 className="font-heading text-2xl font-bold">Mafikul Islam</h3>
-              <p className="text-sm font-medium text-primary">Student ID: 2323111070</p>
+              <h3 className="font-heading text-2xl font-bold">{adminSettings.devName || "Mafikul Islam"}</h3>
+              <p className="text-sm font-medium text-primary">Student ID: {adminSettings.devStudentId || "232311070"}</p>
               <p className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">6th Semester • Section B</p>
               <p className="text-xs text-muted-foreground pt-2">
                 Developer & Maintainer of the CSE Class Routine App
@@ -969,7 +1027,7 @@ export default function Index() {
             
             <div className="mt-6 flex justify-center gap-4">
               <a 
-                href="https://wa.me/8801788302771" 
+                href={`https://wa.me/${adminSettings.devWhatsapp || "8801788302771"}`} 
                 target="_blank" 
                 rel="noreferrer" 
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10 text-green-600 transition-colors hover:bg-green-500 hover:text-white"
@@ -978,7 +1036,7 @@ export default function Index() {
                 <MessageCircle className="h-5 w-5" />
               </a>
               <a 
-                href="https://github.com/mafikul01" 
+                href={`https://github.com/${adminSettings.githubUsername || "mafikul01"}`} 
                 target="_blank" 
                 rel="noreferrer" 
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-foreground transition-colors hover:bg-foreground hover:text-background"
@@ -987,7 +1045,7 @@ export default function Index() {
                 <Github className="h-5 w-5" />
               </a>
               <a 
-                href="https://facebook.com/mafikul01" 
+                href={`https://facebook.com/${adminSettings.devFacebook || "mafikul01"}`} 
                 target="_blank" 
                 rel="noreferrer" 
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600/10 text-blue-600 transition-colors hover:bg-blue-600 hover:text-white"
@@ -996,7 +1054,7 @@ export default function Index() {
                 <Facebook className="h-5 w-5" />
               </a>
               <a 
-                href="https://linkedin.com/in/mafikul01" 
+                href={`https://linkedin.com/in/${adminSettings.devLinkedin || "mafikul01"}`} 
                 target="_blank" 
                 rel="noreferrer" 
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-700/10 text-blue-700 transition-colors hover:bg-blue-700 hover:text-white"
@@ -1106,15 +1164,65 @@ export default function Index() {
                     className="w-full rounded-lg border bg-card p-2.5 text-sm outline-none focus:border-primary"
                   />
                 </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">GitHub Username (for Photo)</label>
-                  <input
-                    type="text"
-                    value={newGithubUsername}
-                    onChange={(e) => setNewGithubUsername(e.target.value)}
-                    className="w-full rounded-lg border bg-card p-2.5 text-sm outline-none focus:border-primary"
-                  />
+                
+                <h5 className="text-xs font-bold uppercase text-muted-foreground pt-2 border-t">Developer Section Info</h5>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Dev Name</label>
+                    <input
+                      type="text"
+                      value={devName}
+                      onChange={(e) => setDevName(e.target.value)}
+                      className="w-full rounded-lg border bg-card p-2 text-sm outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Student ID</label>
+                    <input
+                      type="text"
+                      value={devStudentId}
+                      onChange={(e) => setDevStudentId(e.target.value)}
+                      className="w-full rounded-lg border bg-card p-2 text-sm outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-muted-foreground">GitHub</label>
+                    <input
+                      type="text"
+                      value={newGithubUsername}
+                      onChange={(e) => setNewGithubUsername(e.target.value)}
+                      className="w-full rounded-lg border bg-card p-2 text-sm outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-muted-foreground">LinkedIn</label>
+                    <input
+                      type="text"
+                      value={devLinkedin}
+                      onChange={(e) => setDevLinkedin(e.target.value)}
+                      className="w-full rounded-lg border bg-card p-2 text-sm outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Facebook</label>
+                    <input
+                      type="text"
+                      value={devFacebook}
+                      onChange={(e) => setDevFacebook(e.target.value)}
+                      className="w-full rounded-lg border bg-card p-2 text-sm outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-muted-foreground">WhatsApp No.</label>
+                    <input
+                      type="text"
+                      value={devWhatsapp}
+                      onChange={(e) => setDevWhatsapp(e.target.value)}
+                      className="w-full rounded-lg border bg-card p-2 text-sm outline-none"
+                    />
+                  </div>
                 </div>
+
                 <button
                   onClick={updateSettings}
                   className="w-full rounded-lg bg-secondary py-2.5 text-sm font-bold text-secondary-foreground shadow-sm transition-all hover:bg-secondary/80 active:scale-[0.98]"
