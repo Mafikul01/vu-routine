@@ -19,6 +19,7 @@ import {
 import { GraduationCap, User, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, Code, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote } from "lucide-react";
 import { useTheme } from "@/components/ThemeContext";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "motion/react";
 import { getGoogleSheetCsvUrlByGid, parseRoutineCsv, parseTeacherCsv } from "@/lib/parser";
 import { Teacher } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -545,7 +546,7 @@ export default function Index() {
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
               <BookOpen className="h-8 w-8 text-primary" />
             </div>
-            <h1 className="font-heading text-2xl font-bold">Class Routine</h1>
+            <h1 className="font-heading text-2xl font-bold">Vu Routine</h1>
             <p className="mt-1 text-sm text-muted-foreground">CSE Department</p>
           </div>
           <div className="space-y-3">
@@ -575,7 +576,7 @@ export default function Index() {
       <div className="mb-5 flex items-center justify-between">
         <div>
           <h1 className="font-heading text-lg font-bold">
-            {role === "student" ? "My Routine" : "My Classes"}
+            {role === "student" ? "Vu Routine" : "My Classes"}
           </h1>
           <div className="flex flex-col">
             <p className="text-xs text-muted-foreground font-medium">
@@ -690,31 +691,50 @@ export default function Index() {
       </div>
 
       {/* Notice Banner */}
-      {notice.active && notice.text && (!hasDismissedNotice || notice.type === "important") && (
-        <div className="mb-5 animate-in slide-in-from-top duration-500">
-          <div className={`flex items-start gap-3 rounded-xl p-4 border shadow-sm ${notice.type === "important" ? "bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-900/30" : "bg-primary/5 border-primary/10"}`}>
-            {notice.type === "important" ? (
-              <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-            ) : (
-              <Bell className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-            )}
-            <div className="flex-1">
-              <p className={`text-sm font-medium leading-relaxed ${notice.type === "important" ? "text-red-900 dark:text-red-200" : "text-foreground"}`}>
-                {notice.text}
-              </p>
+      <AnimatePresence>
+        {notice.active && notice.text && (!hasDismissedNotice || notice.type === "important") && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, x: 20 }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            onDragEnd={(_, info) => {
+              if (Math.abs(info.offset.x) > 100 && notice.type === "normal") {
+                setHasDismissedNotice(true);
+              }
+            }}
+            className="mb-5 cursor-grab active:cursor-grabbing"
+          >
+            <div className={`flex items-start gap-3 rounded-xl p-4 border shadow-sm ${notice.type === "important" ? "bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-900/30" : "bg-primary/5 border-primary/10"}`}>
+              {notice.type === "important" ? (
+                <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+              ) : (
+                <Bell className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+              )}
+              <div className="flex-1">
+                <p className={`text-sm font-medium leading-relaxed ${notice.type === "important" ? "text-red-900 dark:text-red-200" : "text-foreground"}`}>
+                  {notice.text}
+                </p>
+                {notice.type === "normal" && (
+                   <p className="mt-1 text-[10px] text-muted-foreground opacity-60">
+                     Swipe left or right to dismiss
+                   </p>
+                )}
+              </div>
+              {notice.type === "normal" && (
+                <button 
+                  onClick={() => setHasDismissedNotice(true)}
+                  className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                  title="Dismiss"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
-            {notice.type === "normal" && (
-              <button 
-                onClick={() => setHasDismissedNotice(true)}
-                className="text-muted-foreground hover:text-foreground transition-colors p-1"
-                title="Dismiss"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Student: Semester picker */}
       {role === "student" && (
