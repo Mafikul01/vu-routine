@@ -1,0 +1,43 @@
+{
+  "entities": {
+    "Settings": {
+      "title": "Settings",
+      "description": "Global application configuration",
+      "type": "object",
+      "properties": {
+        "mainSheetUrl": { "type": "string" },
+        "infoGid": { "type": "string" },
+        "semesterGids": { "type": "object" },
+        "githubUsername": { "type": "string", "description": "GitHub username for profile photo" },
+        "adminEmails": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Additional admin emails"
+        }
+      },
+      "required": ["mainSheetUrl"]
+    },
+    "Notice": {
+      "title": "Notice",
+      "description": "Information or announcement banner",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "description": "The notice text to display" },
+        "active": { "type": "boolean", "description": "Whether the notice is visible" },
+        "type": { "type": "string", "enum": ["normal", "important"], "description": "Type of notice determining if it can be dismissed" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["text", "active", "type"]
+    }
+  },
+  "firestore": {
+    "/settings/global": {
+      "schema": "Settings",
+      "description": "Global app settings including sheet links"
+    },
+    "/notices/current": {
+      "schema": "Notice",
+      "description": "The active announcement text"
+    }
+  }
+}

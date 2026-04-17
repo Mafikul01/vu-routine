@@ -1,0 +1,91 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: settings
+// Document: global
+// Fields:
+//   - mainSheetUrl: string (required) - link to the routine sheet
+//   - infoGid: string (optional) - GID for the teacher info sheet
+//   - semesterGids: map (optional) - mapping of semester numbers to GIDs
+//
+// Collection: notices
+// Document: current
+// Fields:
+//   - text: string (required, max 1000) - current notice message
+//   - active: bool (required) - display status
+//   - createdAt: timestamp (optional) - time of creation
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return request.auth != null && 
+             request.auth.token.email_verified == true &&
+             (
+               request.auth.token.email == "mafikulmovie@gmail.com" ||
+               (
+                 exists(/databases/$(database)/documents/settings/global) &&
+                 'adminEmails' in get(/databases/$(database)/documents/settings/global).data &&
+                 request.auth.token.email in get(/databases/$(database)/documents/settings/global).data.adminEmails
+               )
+             );
+    }
+    
+    function hasOnlyAllowedFields(data, allowedFields) {
+      return data.keys().hasOnly(allowedFields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidSettings(data) {
+      return data.mainSheetUrl is string && 
+             data.mainSheetUrl.size() > 10 &&
+             data.mainSheetUrl.size() < 500 &&
+             (!('infoGid' in data) || data.infoGid is string) &&
+             (!('semesterGids' in data) || data.semesterGids is map) &&
+             (!('githubUsername' in data) || data.githubUsername is string) &&
+             (!('adminEmails' in data) || (data.adminEmails is list && data.adminEmails.size() < 50));
+    }
+
+    function isValidNotice(data) {
+      return data.text is string && 
+             data.text.size() > 0 && 
+             data.text.size() < 1000 &&
+             data.active is bool &&
+             data.type in ['normal', 'important'] &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /settings/global {
+      allow read: if true; // Public configuration
+      allow write: if isAdmin() && isValidSettings(request.resource.data) && hasOnlyAllowedFields(request.resource.data, ['mainSheetUrl', 'infoGid', 'semesterGids', 'githubUsername', 'adminEmails']);
+    }
+
+    match /notices/current {
+      allow read: if true; // Public notices
+      allow write: if isAdmin() && isValidNotice(request.resource.data) && hasOnlyAllowedFields(request.resource.data, ['text', 'active', 'createdAt', 'type']);
+    }
+    
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
