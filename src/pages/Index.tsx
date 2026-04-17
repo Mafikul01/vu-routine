@@ -18,7 +18,7 @@ import {
 } from "@/data/routineData";
 import { GraduationCap, User, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, Code, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote } from "lucide-react";
 import { useTheme } from "@/components/ThemeContext";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { motion, AnimatePresence } from "motion/react";
 import { getGoogleSheetCsvUrlByGid, parseRoutineCsv, parseTeacherCsv } from "@/lib/parser";
 import { Teacher } from "@/types";
@@ -700,7 +700,7 @@ export default function Index() {
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
             onDragEnd={(_, info) => {
-              if (Math.abs(info.offset.x) > 100 && notice.type === "normal") {
+              if (Math.abs(info.offset.x) > 50 && notice.type === "normal") {
                 setHasDismissedNotice(true);
               }
             }}
