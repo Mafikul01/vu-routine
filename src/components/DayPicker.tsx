@@ -45,7 +45,7 @@ export function DayPicker({ selectedDay, onSelectDay, freeDays = [] }: DayPicker
           <button
             key={day}
             onClick={() => onSelectDay(day)}
-            className={`flex flex-col items-center justify-center rounded-lg py-2 transition-all ${
+            className={`flex flex-col items-center justify-center rounded-lg py-1.5 transition-all ${
               isSelected
                 ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/20"
                 : isFree
@@ -53,8 +53,8 @@ export function DayPicker({ selectedDay, onSelectDay, freeDays = [] }: DayPicker
                 : "bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-transparent"
             }`}
           >
-            <span className="text-[10px] font-bold md:text-xs">{day.slice(0, 3)}</span>
-            <span className={`text-[8px] md:text-[10px] ${isSelected ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+            <span className="text-[13px] font-bold leading-tight md:text-[15px]">{day.slice(0, 3)}</span>
+            <span className={`text-[10.5px] leading-tight md:text-[12px] ${isSelected ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
               {datesMap[day]}
             </span>
           </button>
