@@ -96,6 +96,7 @@ export default function Index() {
   const [isRoomFinderOpen, setIsRoomFinderOpen] = useState(false);
   const [roomFinderMode, setRoomFinderMode] = useState<"room" | "time">("room");
   const [selectedRoom, setSelectedRoom] = useState("");
+  const [showFreeFirst, setShowFreeFirst] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(1);
 
   // Detail Dialog states
@@ -1005,38 +1006,60 @@ export default function Index() {
 
                 {selectedSlot && (
                   <div className="mt-4 space-y-3">
-                    <h4 className="text-sm font-medium text-muted-foreground border-b pb-2">
-                      Availability at {SLOTS.find(s => s.slot === selectedSlot)?.start} - {SLOTS.find(s => s.slot === selectedSlot)?.end} on {selectedDay}
-                    </h4>
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <h4 className="text-sm font-medium text-muted-foreground">
+                        Availability at {SLOTS.find(s => s.slot === selectedSlot)?.start} - {SLOTS.find(s => s.slot === selectedSlot)?.end} on {selectedDay}
+                      </h4>
+                      <label className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={showFreeFirst}
+                          onChange={(e) => setShowFreeFirst(e.target.checked)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        Free First
+                      </label>
+                    </div>
                     <div className="grid grid-cols-2 gap-2">
-                      {allRooms.map(room => {
-                        const classesInSlot = getClassesBySlot(selectedDay, selectedSlot);
-                        const occupyingClass = classesInSlot.find(c => c.room === room);
-                        const isFree = !occupyingClass;
-                        return (
-                          <div 
-                            key={room} 
-                            onClick={!isFree ? () => setSelectedEntry(occupyingClass!) : undefined}
-                            className={`p-3 rounded-lg border ${isFree ? 'border-green-200 bg-green-50 dark:bg-green-900/10 dark:border-green-900/30' : 'border-red-100 bg-red-50/50 dark:bg-red-900/10 dark:border-red-900/20 cursor-pointer hover:border-red-300 dark:hover:border-red-700 transition-colors'}`}
-                          >
-                            <div className="font-bold text-sm mb-1">{room}</div>
-                            {isFree ? (
-                              <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider text-green-600 dark:text-green-400">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5" /> FREE
-                              </span>
-                            ) : (
-                              <div className="flex flex-col">
-                                <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider text-red-500 dark:text-red-400 mb-1">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5" /> NOT AVAILABLE
+                      {allRooms
+                        .slice()
+                        .sort((a, b) => {
+                          if (showFreeFirst) {
+                            const isFreeA = !getClassesBySlot(selectedDay, selectedSlot).find(c => c.room === a);
+                            const isFreeB = !getClassesBySlot(selectedDay, selectedSlot).find(c => c.room === b);
+                            if (isFreeA && !isFreeB) return -1;
+                            if (!isFreeA && isFreeB) return 1;
+                          }
+                          return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+                        })
+                        .map(room => {
+                          const classesInSlot = getClassesBySlot(selectedDay, selectedSlot);
+                          const occupyingClass = classesInSlot.find(c => c.room === room);
+                          const isFree = !occupyingClass;
+                          return (
+                            <div 
+                              key={room} 
+                              onClick={!isFree ? () => setSelectedEntry(occupyingClass!) : undefined}
+                              className={`p-3 rounded-lg border ${isFree ? 'border-green-200 bg-green-50 dark:bg-green-900/10 dark:border-green-900/30' : 'border-red-100 bg-red-50/50 dark:bg-red-900/10 dark:border-red-900/20 cursor-pointer hover:border-red-300 dark:hover:border-red-700 transition-colors'}`}
+                            >
+                              <div className="font-bold text-sm mb-1">{room}</div>
+                              {isFree ? (
+                                <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider text-green-600 dark:text-green-400">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5" /> FREE
                                 </span>
-                                <span className="text-[10px] text-muted-foreground truncate" title={`${occupyingClass.course} (${occupyingClass.section})`}>
-                                  {occupyingClass.course} (Sem {occupyingClass.semester}, Sec {occupyingClass.section})
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                              ) : (
+                                <div className="flex flex-col">
+                                  <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider text-red-500 dark:text-red-400 mb-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5" /> NOT AVAILABLE
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground truncate" title={`${occupyingClass.course} (${occupyingClass.section})`}>
+                                    {occupyingClass.course} (Sem {occupyingClass.semester}, Sec {occupyingClass.section})
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                     </div>
                   </div>
                 )}
