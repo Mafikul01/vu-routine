@@ -1249,6 +1249,9 @@ export default function Index() {
                 </li>
               </ul>
             </div>
+            <p className="pt-4 text-center text-[10px] text-muted-foreground font-bold tracking-widest uppercase opacity-30">
+              Version 1.0
+            </p>
           </div>
         </DialogContent>
       </Dialog>
@@ -1457,6 +1460,10 @@ export default function Index() {
                 <strong>Pro Tip:</strong> All changes made here are applied in real-time to all users without needing a code redeploy.
               </p>
             </div>
+            
+            <p className="pt-2 text-center text-[10px] text-muted-foreground font-bold tracking-widest uppercase opacity-30">
+              Version 1.0
+            </p>
           </div>
         </DialogContent>
       </Dialog>
