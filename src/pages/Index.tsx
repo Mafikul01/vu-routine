@@ -102,6 +102,7 @@ export default function Index() {
 
   // App Menu states
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [swipeDirection, setSwipeDirection] = useState(0);
   const [isTeacherDirOpen, setIsTeacherDirOpen] = useState(false);
   const [isDevInfoOpen, setIsDevInfoOpen] = useState(false);
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
@@ -694,30 +695,41 @@ export default function Index() {
       <AnimatePresence>
         {notice.active && notice.text && (!hasDismissedNotice || notice.type === "important") && (
           <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, x: 20 }}
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ 
+              opacity: 0, 
+              x: swipeDirection > 0 ? 100 : swipeDirection < 0 ? -100 : 0,
+              filter: "blur(10px)",
+              transition: { duration: 0.2 }
+            }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.7}
+            onDrag={(e, info) => {
+              setSwipeDirection(info.offset.x);
+            }}
             onDragEnd={(_, info) => {
               if (Math.abs(info.offset.x) > 50 && notice.type === "normal") {
                 setHasDismissedNotice(true);
+              } else {
+                setSwipeDirection(0);
               }
             }}
-            className="mb-5 cursor-grab active:cursor-grabbing"
+            className="mb-5 cursor-grab active:cursor-grabbing touch-none"
           >
-            <div className={`flex items-start gap-3 rounded-xl p-4 border shadow-sm ${notice.type === "important" ? "bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-900/30" : "bg-primary/5 border-primary/10"}`}>
+            <div className={`flex items-start gap-3 rounded-xl p-4 border shadow-sm transition-colors ${notice.type === "important" ? "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900/50" : "bg-primary/10 border-primary/20 dark:bg-primary/5 dark:border-primary/20"}`}>
               {notice.type === "important" ? (
                 <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
               ) : (
                 <Bell className="h-5 w-5 text-primary shrink-0 mt-0.5" />
               )}
-              <div className="flex-1">
-                <p className={`text-sm font-medium leading-relaxed ${notice.type === "important" ? "text-red-900 dark:text-red-200" : "text-foreground"}`}>
+              <div className="flex-1 overflow-hidden">
+                <p className={`text-sm font-semibold leading-relaxed ${notice.type === "important" ? "text-red-900 dark:text-red-200" : "text-foreground"}`}>
                   {notice.text}
                 </p>
                 {notice.type === "normal" && (
-                   <p className="mt-1 text-[10px] text-muted-foreground opacity-60">
+                   <p className="mt-1 text-[10px] text-muted-foreground/70 font-medium">
                      Swipe left or right to dismiss
                    </p>
                 )}
@@ -725,7 +737,7 @@ export default function Index() {
               {notice.type === "normal" && (
                 <button 
                   onClick={() => setHasDismissedNotice(true)}
-                  className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                  className="text-muted-foreground hover:text-foreground transition-colors p-1 shrink-0"
                   title="Dismiss"
                 >
                   <X className="h-4 w-4" />

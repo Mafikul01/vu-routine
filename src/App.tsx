@@ -13,7 +13,7 @@ const App = () => (
     <ThemeProvider defaultTheme="light" storageKey="routine-theme">
       <TooltipProvider>
         <Toaster />
-        <Sonner position="bottom-left" expand={false} richColors closeButton />
+        <Sonner position="bottom-center" expand={false} richColors closeButton />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />

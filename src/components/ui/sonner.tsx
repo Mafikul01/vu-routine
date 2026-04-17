@@ -1,4 +1,4 @@
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/ThemeContext";
 import { Toaster as Sonner, toast } from "sonner";
 import { Check } from "lucide-react";
 import { motion } from "motion/react";
