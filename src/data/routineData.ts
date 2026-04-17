@@ -11,7 +11,7 @@ export interface ClassEntry {
   room: string;
 }
 
-export const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"] as const;
+export const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
 
 export const SLOTS = [
   { slot: 1, start: "09:00 AM", end: "10:00 AM" },
@@ -61,16 +61,55 @@ export function normalizeTeacherName(name: string): string {
   if (!name) return "";
   const normalized = name.toLowerCase()
     .replace(/^md\.?\s+/g, "") // Remove 'Md ' or 'Md. ' from the beginning
-    .replace(/\s+cse$/g, "") // Remove ' CSE' from the end
-    .replace(/\s+dept\.?$/g, "") // Remove ' Dept' or ' Dept.'
-    .replace(/[^a-z0-9 ]/g, "") // Remove non-alphanumeric chars (except spaces)
+    .replace(/^mrs\.?\s+/g, "") 
+    .replace(/^mr\.?\s+/g, "")
+    .replace(/^ms\.?\s+/g, "")
+    .replace(/^dr\.?\s+/g, "")
+    .replace(/\s*\(cse\)/g, "") // Remove (cse)
+    .replace(/\s+cse$/g, "") 
+    .replace(/\s+dept\.?$/g, "") 
+    .replace(/[^a-z0-9 ]/g, "") 
     .trim();
   return normalized;
 }
 
+export function cleanTeacherName(name: string): string {
+  if (!name) return "";
+  
+  // Custom mapping
+  const mappings: Record<string, string> = {
+    "Eco New teacher 3": "Faisal Aziz",
+    "Eco New Teacher 3": "Faisal Aziz",
+  };
+  
+  if (mappings[name]) return mappings[name];
+  
+  return name.replace(/\s*\(cse\)/i, "").trim();
+}
+
+export function getInitials(name: string): string {
+  const normalized = normalizeTeacherName(name);
+  if (!normalized) return "";
+  const parts = normalized.split(/\s+/);
+  if (parts.length === 1 && parts[0].length <= 3) return parts[0].toUpperCase(); // Already looks like initials
+  return parts.map(p => p[0]).join("").toUpperCase();
+}
+
 export function getClassesForTeacher(day: string, teacherName: string, data: ClassEntry[] = routineData): ClassEntry[] {
   const normalizedSearch = normalizeTeacherName(teacherName);
+  const searchInitials = teacherName.length <= 3 ? teacherName.toUpperCase() : null;
+  
   return data
-    .filter(e => e.day === day && e.teachers.some(t => normalizeTeacherName(t).includes(normalizedSearch) || normalizedSearch.includes(normalizeTeacherName(t))))
+    .filter(e => e.day === day && e.teachers.some(t => {
+      const normT = normalizeTeacherName(t);
+      const initialsT = getInitials(t);
+      
+      return (
+        normT.includes(normalizedSearch) || 
+        normalizedSearch.includes(normT) ||
+        (searchInitials && initialsT === searchInitials) ||
+        (initialsT === normalizedSearch.toUpperCase())
+      );
+    }))
     .sort((a, b) => a.slot - b.slot);
 }

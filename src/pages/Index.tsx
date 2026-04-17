@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { DayPicker } from "@/components/DayPicker";
 import { ClassCard } from "@/components/ClassCard";
 import {
@@ -11,12 +11,15 @@ import {
   getClassesForTeacher,
   getTeacherList,
   normalizeTeacherName,
+  getInitials,
+  cleanTeacherName,
   ClassEntry,
   routineData as staticRoutineData,
 } from "@/data/routineData";
-import { GraduationCap, User, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, Code, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle } from "lucide-react";
-import { getGoogleSheetCsvUrlByGid, parseRoutineCsv, parseTeacherCsv } from "@/lib/parser";
+import { GraduationCap, User, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, Code, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote } from "lucide-react";
+import { useTheme } from "@/components/ThemeContext";
 import { toast } from "sonner";
+import { getGoogleSheetCsvUrlByGid, parseRoutineCsv, parseTeacherCsv } from "@/lib/parser";
 import { Teacher } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, handleFirestoreError, OperationType } from "@/lib/firebase";
@@ -40,7 +43,28 @@ const SEMESTER_GIDS: Record<number, string> = {
 
 type Role = "student" | "teacher" | null;
 
+const QUOTES = [
+  "And He has found you lost and guided [you]. - Surah Ad-Duha 93:7",
+  "Allah does not burden a soul beyond that it can bear. - Surah Al-Baqarah 2:286",
+  "So verily, with the hardship, there is relief. - Surah Al-Inshirah 94:5",
+  "The best of you are those who learn the Quran and teach it. - Prophet Muhammad (SAW)",
+  "Whoever follows a path in pursuit of knowledge, Allah will make easy for him a path to Paradise. - Prophet Muhammad (SAW)",
+  "Indeed, Allah is with the patient. - Surah Al-Baqarah 2:153",
+  "And rely upon Allah; and sufficient is Allah as Disposer of affairs. - Surah Al-Ahzab 33:3",
+  "My success can only come from Allah. - Surah Hud 11:88"
+];
+
+const getFormattedDate = () => {
+  const date = new Date();
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
+};
+
 export default function Index() {
+  const { theme, setTheme } = useTheme();
+  const [currentQuoteIndex, setCurrentQuoteIndex] = useState(() => Math.floor(Math.random() * QUOTES.length));
   const [role, setRole] = useState<Role>(() => {
     return (localStorage.getItem("routine-role") as Role) || null;
   });
@@ -117,7 +141,7 @@ export default function Index() {
   const [devFacebook, setDevFacebook] = useState("");
   const [devLinkedin, setDevLinkedin] = useState("");
   const [devWhatsapp, setDevWhatsapp] = useState("");
-
+  
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -181,9 +205,9 @@ export default function Index() {
   const handleLogin = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-      toast.success("Logged in successfully");
+      toast.success("Logged In");
     } catch (e) {
-      toast.error("Login failed");
+      toast.error("Login Failed");
     }
   };
 
@@ -204,7 +228,7 @@ export default function Index() {
         type: newNoticeType,
         createdAt: new Date()
       });
-      toast.success("Notice updated");
+      toast.success("Notice Updated");
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, "notices/current");
     }
@@ -233,7 +257,7 @@ export default function Index() {
         devLinkedin,
         devWhatsapp
       });
-      toast.success("App settings updated");
+      toast.success("Settings Saved");
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, "settings/global");
     }
@@ -250,7 +274,7 @@ export default function Index() {
 
     const currentEmails = adminSettings.adminEmails || [rootAdmin];
     if (currentEmails.includes(newAdminEmail)) {
-      toast.info("This user is already an admin");
+      toast.info("Already Admin");
       return;
     }
 
@@ -262,7 +286,7 @@ export default function Index() {
         adminEmails: updatedEmails
       });
       setNewAdminEmail("");
-      toast.success("Admin added successfully");
+      toast.success("Admin Added");
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, "settings/global");
     }
@@ -271,7 +295,7 @@ export default function Index() {
   const removeAdminEmail = async (emailToRemove: string) => {
     const rootAdmin = "mafikulmovie@gmail.com";
     if (emailToRemove === rootAdmin) {
-      toast.error("Cannot remove the root admin");
+      toast.error("Root Admin Locked");
       return;
     }
 
@@ -283,7 +307,7 @@ export default function Index() {
         ...adminSettings,
         adminEmails: updatedEmails
       });
-      toast.success("Admin removed successfully");
+      toast.success("Admin Removed");
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, "settings/global");
     }
@@ -307,41 +331,100 @@ export default function Index() {
 
   const fetchDynamicRoutine = async () => {
     setIsSyncing(true);
+    let successCount = 0;
+    let failCount = 0;
+    
     try {
       // 1. Fetch Teachers Info from dynamic settings
-      const infoUrl = getGoogleSheetCsvUrlByGid(adminSettings.mainSheetUrl, adminSettings.infoGid);
-      const infoResponse = await fetch(infoUrl);
-      if (infoResponse.ok) {
-        const infoCsv = await infoResponse.text();
-        const teachers = parseTeacherCsv(infoCsv);
-        setTeacherInfo(teachers);
-        localStorage.setItem("cached-teachers", JSON.stringify(teachers));
+      try {
+        const infoUrl = getGoogleSheetCsvUrlByGid(adminSettings.mainSheetUrl, adminSettings.infoGid);
+        const infoResponse = await fetch(infoUrl);
+        if (infoResponse.ok) {
+          const infoCsv = await infoResponse.text();
+          let teachers = parseTeacherCsv(infoCsv);
+          
+          // Custom injection/cleanup
+          if (!teachers.some(t => t.name.includes("Faisal Aziz") || t.name.includes("Eco New teacher 3"))) {
+            teachers.push({
+              name: "Faisal Aziz",
+              phone: "+8801717843998",
+              initials: "FA",
+              designation: "Lecturer",
+              department: "ECO",
+              email: "",
+              officeRoom: ""
+            });
+          }
+          
+          // Clean names in teacher info and enrich Faisal Aziz data
+          teachers = teachers.map(t => {
+            const cleanedName = cleanTeacherName(t.name);
+            if (cleanedName === "Faisal Aziz") {
+              return {
+                ...t,
+                name: "Faisal Aziz",
+                phone: t.phone || "+8801717843998",
+                designation: (!t.designation || t.designation === "Faculty Member") ? "Lecturer" : t.designation,
+                department: t.department || "ECO",
+                initials: t.initials || "FA"
+              };
+            }
+            return {
+              ...t,
+              name: cleanedName
+            };
+          });
+
+          setTeacherInfo(teachers);
+          localStorage.setItem("cached-teachers", JSON.stringify(teachers));
+          successCount++;
+        } else {
+          console.warn(`Teacher info fetch failed: ${infoResponse.status}`);
+          failCount++;
+        }
+      } catch (e) {
+        console.error("Teacher sync error:", e);
+        failCount++;
       }
 
       // 2. Fetch Routine from dynamic settings
       const relevantGids = adminSettings.semesterGids || SEMESTER_GIDS;
+      const allSessions: ClassEntry[] = [];
       
-      let allSessions: ClassEntry[] = [];
       const sessionPromises = Object.entries(relevantGids).map(async ([sem, gid]) => {
-        const csvUrl = getGoogleSheetCsvUrlByGid(adminSettings.mainSheetUrl, gid);
-        const response = await fetch(csvUrl);
-        if (!response.ok) return [];
-        const csvText = await response.text();
-        return parseRoutineCsv(csvText, parseInt(sem, 10));
+        try {
+          const csvUrl = getGoogleSheetCsvUrlByGid(adminSettings.mainSheetUrl, gid);
+          const response = await fetch(csvUrl);
+          if (!response.ok) {
+            console.warn(`Routine fetch failed for Sem ${sem}: ${response.status}`);
+            return [];
+          }
+          const csvText = await response.text();
+          const sems = parseRoutineCsv(csvText, parseInt(sem, 10));
+          if (sems.length > 0) successCount++;
+          return sems;
+        } catch (e) {
+          console.error(`Error fetching Sem ${sem}:`, e);
+          return [];
+        }
       });
 
       const results = await Promise.all(sessionPromises);
-      allSessions = results.flat();
+      const flattened = results.flat();
 
-      if (allSessions.length > 0) {
-        setCurrentRoutine(allSessions);
-        localStorage.setItem("cached-routine", JSON.stringify(allSessions));
+      if (flattened.length > 0) {
+        setCurrentRoutine(flattened);
+        localStorage.setItem("cached-routine", JSON.stringify(flattened));
         setLastSynced(new Date().toLocaleTimeString());
-        toast.success("Routine updated live from Google Sheet");
+        toast.success("Routine Updated Successfully");
+      } else if (successCount > 0) {
+        toast.success("Teacher Info Updated");
+      } else {
+        toast.error("Could not fetch new data. Using offline version.");
       }
     } catch (error) {
-      console.error("Sync error:", error);
-      toast.error("Using offline routine data");
+      console.error("Fatal Sync error:", error);
+      toast.error("Sync failed. Check network connection.");
     } finally {
       setIsSyncing(false);
     }
@@ -376,6 +459,50 @@ export default function Index() {
       setSelectedTeacher(teachers[0]);
     }
   };
+
+  const allRooms = useMemo(() => Array.from(new Set(currentRoutine.map(e => e.room))).sort(), [currentRoutine]);
+
+  const getClassesByRoom = useCallback((day: string, room: string) => {
+    return currentRoutine
+      .filter(e => e.day === day && e.room === room)
+      .sort((a, b) => a.slot - b.slot);
+  }, [currentRoutine]);
+
+  const getClassesBySlot = useCallback((day: string, slot: number) => {
+    return currentRoutine
+      .filter(e => e.day === day && e.slot === slot)
+      .sort((a, b) => a.room.localeCompare(b.room));
+  }, [currentRoutine]);
+
+  const currentFreeDays = useMemo(() => {
+    return DAYS.filter(day => {
+      const dayClasses = role === "student"
+        ? getClassesForStudent(day, semester, section, currentRoutine)
+        : getClassesForTeacher(day, selectedTeacher, currentRoutine);
+      return dayClasses.length === 0;
+    });
+  }, [role, semester, section, selectedTeacher, currentRoutine]);
+
+  const roomFreeDays = useMemo(() => {
+    if (selectedRoom) {
+      return DAYS.filter(day => getClassesByRoom(day, selectedRoom).length === 0);
+    }
+    return [];
+  }, [selectedRoom, getClassesByRoom]);
+
+  const classes =
+    role === "student"
+      ? getClassesForStudent(selectedDay, semester, section, currentRoutine)
+      : getClassesForTeacher(selectedDay, selectedTeacher, currentRoutine);
+
+  const filteredTeachers = teacherSearch
+    ? teachers.filter(t => {
+        const normT = normalizeTeacherName(t);
+        const normS = normalizeTeacherName(teacherSearch);
+        const initials = getInitials(t);
+        return normT.includes(normS) || normS.includes(normT) || initials.toLowerCase().includes(normS.toLowerCase());
+      })
+    : teachers;
 
   if (isChangingRole || !role) {
     // Current role will be in 2nd position, other role in 1st.
@@ -442,29 +569,6 @@ export default function Index() {
     );
   }
 
-  const allRooms = Array.from(new Set(currentRoutine.map(e => e.room))).sort();
-
-  const getClassesByRoom = (day: string, room: string) => {
-    return currentRoutine
-      .filter(e => e.day === day && e.room === room)
-      .sort((a, b) => a.slot - b.slot);
-  };
-
-  const getClassesBySlot = (day: string, slot: number) => {
-    return currentRoutine
-      .filter(e => e.day === day && e.slot === slot)
-      .sort((a, b) => a.room.localeCompare(b.room));
-  };
-
-  const classes =
-    role === "student"
-      ? getClassesForStudent(selectedDay, semester, section, currentRoutine)
-      : getClassesForTeacher(selectedDay, selectedTeacher, currentRoutine);
-
-  const filteredTeachers = teacherSearch
-    ? teachers.filter(t => normalizeTeacherName(t).includes(normalizeTeacherName(teacherSearch)))
-    : teachers;
-
   return (
     <div className="mx-auto min-h-screen max-w-lg p-4 pb-20 relative">
       {/* Header */}
@@ -473,11 +577,16 @@ export default function Index() {
           <h1 className="font-heading text-lg font-bold">
             {role === "student" ? "My Routine" : "My Classes"}
           </h1>
-          <p className="text-xs text-muted-foreground">
-            {role === "student"
-              ? `${semester}${semester === 1 ? "st" : semester === 2 ? "nd" : semester === 3 ? "rd" : "th"} Semester • Section ${section}`
-              : selectedTeacher}
-          </p>
+          <div className="flex flex-col">
+            <p className="text-xs text-muted-foreground font-medium">
+              {role === "student"
+                ? `${semester}${semester === 1 ? "st" : semester === 2 ? "nd" : semester === 3 ? "rd" : "th"} Semester • Section ${section}`
+                : cleanTeacherName(selectedTeacher)}
+            </p>
+            <p className="text-[11px] text-muted-foreground/70 font-bold tracking-wide">
+              {getFormattedDate()}
+            </p>
+          </div>
           {lastSynced && (
             <p className="mt-0.5 text-[10px] text-muted-foreground/60">
               Synced at {lastSynced}
@@ -543,6 +652,14 @@ export default function Index() {
                   Admin Panel
                 </button>
               )}
+              <div className="border-t my-1"></div>
+              <button
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
+              >
+                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                {theme === "dark" ? "Light Mode" : "Dark Mode"}
+              </button>
               <div className="border-t my-1"></div>
               {!user ? (
                 <button
@@ -671,7 +788,7 @@ export default function Index() {
                     selectedTeacher === t ? "bg-secondary font-medium" : ""
                   }`}
                 >
-                  {t}
+                  {cleanTeacherName(t)}
                 </button>
               ))}
               {filteredTeachers.length === 0 && (
@@ -681,7 +798,7 @@ export default function Index() {
           )}
           {!teacherSearch && selectedTeacher && (
             <p className="mt-1 text-xs text-muted-foreground">
-              Selected: <span className="font-medium text-foreground">{selectedTeacher}</span>
+              Selected: <span className="font-medium text-foreground">{cleanTeacherName(selectedTeacher)}</span>
             </p>
           )}
         </div>
@@ -690,7 +807,7 @@ export default function Index() {
       {/* Day picker */}
       <div className="mb-5">
         <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Day</label>
-        <DayPicker selectedDay={selectedDay} onSelectDay={setSelectedDay} />
+        <DayPicker selectedDay={selectedDay} onSelectDay={setSelectedDay} freeDays={currentFreeDays} />
       </div>
 
       {/* Classes list */}
@@ -707,11 +824,26 @@ export default function Index() {
             </div>
           ))
         ) : (
-          <div className="rounded-xl border bg-card p-8 text-center">
-            <BookOpen className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">
-              {`No classes on ${selectedDay}`}
+          <div className="relative mb-8 mt-5 overflow-hidden rounded-2xl border bg-card p-8 text-center shadow-sm">
+            {/* Soft material-style graphic background */}
+            <div className="absolute inset-0 pointer-events-none opacity-5 dark:opacity-10">
+              <div className="absolute -left-10 -top-10 h-40 w-40 rounded-full bg-primary blur-3xl" />
+              <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-blue-500 blur-3xl" />
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-64 rounded-full bg-secondary/20 blur-2xl" />
+            </div>
+            
+            <Quote className="mx-auto mb-4 h-8 w-8 text-primary/40" />
+            <h3 className="mb-2 text-lg font-bold text-foreground">No Classes Today</h3>
+            <p className="mx-auto mb-6 max-w-xs text-sm italic leading-relaxed text-muted-foreground">
+              "{QUOTES[currentQuoteIndex]}"
             </p>
+            <button 
+              onClick={() => setCurrentQuoteIndex((prev) => (prev + 1) % QUOTES.length)}
+              className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-xs font-semibold text-primary transition-all hover:bg-primary/20"
+            >
+              <RefreshCcw className="h-3 w-3" />
+              Show More Quotes
+            </button>
           </div>
         )}
       </div>
@@ -720,7 +852,7 @@ export default function Index() {
       <Dialog open={isRoomFinderOpen} onOpenChange={setIsRoomFinderOpen}>
         <DialogTrigger asChild>
           <button className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl active:scale-95 z-50">
-            <SearchCheck className="h-6 w-6" />
+            <span className="material-symbols-outlined text-[28px]">search_insights</span>
           </button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
@@ -759,7 +891,11 @@ export default function Index() {
             {/* Day picker for Room Finder */}
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground">Select Day</label>
-              <DayPicker selectedDay={selectedDay} onSelectDay={setSelectedDay} />
+              <DayPicker 
+                selectedDay={selectedDay} 
+                onSelectDay={setSelectedDay} 
+                freeDays={roomFinderMode === "room" ? roomFreeDays : currentFreeDays} 
+              />
             </div>
 
             {roomFinderMode === "room" && (
@@ -892,7 +1028,7 @@ export default function Index() {
             <div className="space-y-3">
               <p className="text-xs font-medium text-muted-foreground">Teacher Info</p>
               {selectedEntry?.teachers.map((name, idx) => {
-                const normName = normalizeTeacherName(name);
+                const normName = normalizeTeacherName(cleanTeacherName(name));
                 const info = teacherInfo.find(t => {
                   const normTName = normalizeTeacherName(t.name);
                   const normTInitials = normalizeTeacherName(t.initials || "");
@@ -901,11 +1037,11 @@ export default function Index() {
                 return (
                   <div key={idx} className="rounded-xl border p-4 space-y-2">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/10">
-                        <User className="h-5 w-5 text-accent" />
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20">
+                        <User className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <p className="text-sm font-bold">{info?.name || name}</p>
+                        <p className="text-sm font-bold">{cleanTeacherName(info?.name || name)}</p>
                         <p className="text-xs text-muted-foreground">{info?.designation || "Faculty Member"}</p>
                       </div>
                     </div>
@@ -958,11 +1094,11 @@ export default function Index() {
               .map((teacher, idx) => (
                 <div key={idx} className="rounded-xl border p-4 space-y-3">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/10">
-                      <span className="font-bold text-accent text-sm">{teacher.initials || <User className="h-5 w-5" />}</span>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20">
+                      <span className="font-bold text-primary text-sm">{teacher.initials || <User className="h-5 w-5" />}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold truncate">{teacher.name}</p>
+                      <p className="text-sm font-bold truncate">{cleanTeacherName(teacher.name)}</p>
                       <p className="text-xs text-muted-foreground truncate">{teacher.designation || "Faculty Member"}</p>
                     </div>
                   </div>

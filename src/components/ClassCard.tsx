@@ -1,4 +1,4 @@
-import { ClassEntry, SLOTS } from "@/data/routineData";
+import { ClassEntry, SLOTS, cleanTeacherName } from "@/data/routineData";
 
 const slotColors: Record<number, string> = {
   1: "border-l-slot-1 bg-slot-1/5",
@@ -44,7 +44,7 @@ export function ClassCard({ entry, showSection = false }: ClassCardProps) {
             )}
           </h3>
           <p className="text-xs text-muted-foreground mt-2 font-medium">
-            {entry.teachers.join(", ")}
+            {entry.teachers.map(t => cleanTeacherName(t)).join(", ")}
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
