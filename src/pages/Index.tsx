@@ -102,10 +102,12 @@ export default function Index() {
 
   // App Menu states
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [swipeDirection, setSwipeDirection] = useState(0);
+  const [swipeOffset, setSwipeOffset] = useState({ x: 0, y: 0 });
   const [isTeacherDirOpen, setIsTeacherDirOpen] = useState(false);
   const [isDevInfoOpen, setIsDevInfoOpen] = useState(false);
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
+  const [localToast, setLocalToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [toastSwipeOffset, setToastSwipeOffset] = useState({ x: 0, y: 0 });
   const [dirSearchTerm, setDirSearchTerm] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -418,9 +420,11 @@ export default function Index() {
         setCurrentRoutine(flattened);
         localStorage.setItem("cached-routine", JSON.stringify(flattened));
         setLastSynced(new Date().toLocaleTimeString());
-        toast.success("Routine Updated Successfully");
+        setLocalToast({ message: "Routine Updated Successfully", type: "success" });
+        setTimeout(() => setLocalToast(null), 5000);
       } else if (successCount > 0) {
-        toast.success("Teacher Info Updated");
+        setLocalToast({ message: "Teacher Info Updated", type: "success" });
+        setTimeout(() => setLocalToast(null), 5000);
       } else {
         toast.error("Could not fetch new data. Using offline version.");
       }
@@ -699,24 +703,27 @@ export default function Index() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ 
               opacity: 0, 
-              x: swipeDirection > 0 ? 100 : swipeDirection < 0 ? -100 : 0,
+              x: Math.abs(swipeOffset.x) > Math.abs(swipeOffset.y) ? (swipeOffset.x > 0 ? 100 : -100) : 0,
+              y: Math.abs(swipeOffset.y) >= Math.abs(swipeOffset.x) ? (swipeOffset.y > 0 ? 100 : -100) : 0,
+              scale: 0.9,
               filter: "blur(10px)",
               transition: { duration: 0.2 }
             }}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.7}
-            onDrag={(e, info) => {
-              setSwipeDirection(info.offset.x);
+            drag={notice.type === "normal"}
+            dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+            dragElastic={0.8}
+            onDrag={(_, info) => {
+              setSwipeOffset({ x: info.offset.x, y: info.offset.y });
             }}
             onDragEnd={(_, info) => {
-              if (Math.abs(info.offset.x) > 50 && notice.type === "normal") {
+              const threshold = 50;
+              if ((Math.abs(info.offset.x) > threshold || Math.abs(info.offset.y) > threshold) && notice.type === "normal") {
                 setHasDismissedNotice(true);
               } else {
-                setSwipeDirection(0);
+                setSwipeOffset({ x: 0, y: 0 });
               }
             }}
-            className="mb-5 cursor-grab active:cursor-grabbing touch-none"
+            className="mb-5 cursor-grab active:cursor-grabbing touch-none select-none relative z-40"
           >
             <div className={`flex items-start gap-3 rounded-xl p-4 border shadow-sm transition-colors ${notice.type === "important" ? "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900/50" : "bg-primary/10 border-primary/20 dark:bg-primary/5 dark:border-primary/20"}`}>
               {notice.type === "important" ? (
@@ -730,7 +737,7 @@ export default function Index() {
                 </p>
                 {notice.type === "normal" && (
                    <p className="mt-1 text-[10px] text-muted-foreground/70 font-medium">
-                     Swipe left or right to dismiss
+                     Swipe in any direction to dismiss
                    </p>
                 )}
               </div>
@@ -883,7 +890,7 @@ export default function Index() {
       {/* Room Finder FAB & Dialog */}
       <Dialog open={isRoomFinderOpen} onOpenChange={setIsRoomFinderOpen}>
         <DialogTrigger asChild>
-          <button className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl active:scale-95 z-50">
+          <button className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl active:scale-95 z-[99999]">
             <span className="material-symbols-outlined text-[28px]">search_insights</span>
           </button>
         </DialogTrigger>
@@ -1163,6 +1170,53 @@ export default function Index() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Local Swipeable Toast Notifications */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-xs px-4 pointer-events-none z-[9999]">
+        <AnimatePresence>
+          {localToast && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ 
+                opacity: 0, 
+                x: Math.abs(toastSwipeOffset.x) > 30 ? (toastSwipeOffset.x > 0 ? 100 : -100) : 0,
+                y: Math.abs(toastSwipeOffset.y) > 30 ? (toastSwipeOffset.y > 0 ? 50 : -50) : 0,
+                scale: 0.8,
+                filter: "blur(5px)",
+                transition: { duration: 0.2 }
+              }}
+              drag
+              dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+              dragElastic={0.8}
+              onDrag={(_, info) => {
+                setToastSwipeOffset({ x: info.offset.x, y: info.offset.y });
+              }}
+              onDragEnd={(_, info) => {
+                if (Math.abs(info.offset.x) > 40 || Math.abs(info.offset.y) > 40) {
+                  setLocalToast(null);
+                } else {
+                  setToastSwipeOffset({ x: 0, y: 0 });
+                }
+              }}
+              className="pointer-events-auto cursor-grab active:cursor-grabbing"
+            >
+              <div className={`flex items-center gap-3 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-md ${localToast.type === 'success' ? 'bg-green-500/90 border-green-400 text-white' : 'bg-red-500/90 border-red-400 text-white'}`}>
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/20">
+                  {localToast.type === 'success' ? <SearchCheck className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
+                </div>
+                <p className="text-sm font-bold tracking-tight">{localToast.message}</p>
+                <button 
+                  onClick={() => setLocalToast(null)}
+                  className="ml-auto rounded-full p-1 hover:bg-white/10"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Developer Info Dialog */}
       <Dialog open={isDevInfoOpen} onOpenChange={setIsDevInfoOpen}>
