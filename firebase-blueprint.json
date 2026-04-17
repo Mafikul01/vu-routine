@@ -9,6 +9,12 @@
         "infoGid": { "type": "string" },
         "semesterGids": { "type": "object" },
         "githubUsername": { "type": "string", "description": "GitHub username for profile photo" },
+        "devProfileImage": { "type": "string", "description": "Optional custom profile image URL" },
+        "devName": { "type": "string" },
+        "devStudentId": { "type": "string" },
+        "devFacebook": { "type": "string" },
+        "devLinkedin": { "type": "string" },
+        "devWhatsapp": { "type": "string" },
         "adminEmails": {
           "type": "array",
           "items": { "type": "string" },

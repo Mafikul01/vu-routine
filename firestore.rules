@@ -62,7 +62,8 @@ service cloud.firestore {
              (!('devStudentId' in data) || data.devStudentId is string) &&
              (!('devFacebook' in data) || data.devFacebook is string) &&
              (!('devLinkedin' in data) || data.devLinkedin is string) &&
-             (!('devWhatsapp' in data) || data.devWhatsapp is string);
+             (!('devWhatsapp' in data) || data.devWhatsapp is string) &&
+             (!('devProfileImage' in data) || (data.devProfileImage is string && data.devProfileImage.size() < 1000));
     }
 
     function isValidNotice(data) {
@@ -80,7 +81,7 @@ service cloud.firestore {
 
     match /settings/global {
       allow read: if true; // Public configuration
-      allow write: if isAdmin() && isValidSettings(request.resource.data) && hasOnlyAllowedFields(request.resource.data, ['mainSheetUrl', 'infoGid', 'semesterGids', 'githubUsername', 'adminEmails', 'devName', 'devStudentId', 'devFacebook', 'devLinkedin', 'devWhatsapp']);
+      allow write: if isAdmin() && isValidSettings(request.resource.data) && hasOnlyAllowedFields(request.resource.data, ['mainSheetUrl', 'infoGid', 'semesterGids', 'githubUsername', 'adminEmails', 'devName', 'devStudentId', 'devFacebook', 'devLinkedin', 'devWhatsapp', 'devProfileImage']);
     }
 
     match /notices/current {

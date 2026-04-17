@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { DayPicker } from "@/components/DayPicker";
 import { ClassCard } from "@/components/ClassCard";
+import { COURSE_NAMES } from "@/constants";
 import {
   SEMESTERS,
   SEMESTER_SECTIONS,
@@ -120,12 +121,14 @@ export default function Index() {
     infoGid: string, 
     semesterGids?: Record<string, string>,
     githubUsername?: string,
+    devProfileImage?: string,
     adminEmails?: string[]
   }>({ 
     mainSheetUrl: DEFAULT_SHEET, 
     infoGid: INFO_GID,
     semesterGids: SEMESTER_GIDS,
     githubUsername: "mafikul01",
+    devProfileImage: "",
     adminEmails: ["mafikulmovie@gmail.com"]
   });
 
@@ -138,6 +141,7 @@ export default function Index() {
   const [newMainSheetUrl, setNewMainSheetUrl] = useState("");
   const [newInfoGid, setNewInfoGid] = useState("");
   const [newGithubUsername, setNewGithubUsername] = useState("");
+  const [newProfileImage, setNewProfileImage] = useState("");
   const [newAdminEmail, setNewAdminEmail] = useState("");
   
   const [devName, setDevName] = useState("");
@@ -170,6 +174,7 @@ export default function Index() {
           mainSheetUrl: string; 
           infoGid: string; 
           githubUsername?: string; 
+          devProfileImage?: string;
           adminEmails?: string[];
           devName?: string;
           devStudentId?: string;
@@ -181,6 +186,7 @@ export default function Index() {
         setNewMainSheetUrl(data.mainSheetUrl);
         setNewInfoGid(data.infoGid);
         setNewGithubUsername(data.githubUsername || "mafikul01");
+        setNewProfileImage(data.devProfileImage || "");
         setDevName(data.devName || "Mafikul Islam");
         setDevStudentId(data.devStudentId || "232311070");
         setDevFacebook(data.devFacebook || "mafikul01");
@@ -255,6 +261,7 @@ export default function Index() {
         mainSheetUrl: newMainSheetUrl,
         infoGid: newInfoGid,
         githubUsername: newGithubUsername,
+        devProfileImage: newProfileImage,
         devName,
         devStudentId,
         devFacebook,
@@ -1007,7 +1014,11 @@ export default function Index() {
                         const occupyingClass = classesInSlot.find(c => c.room === room);
                         const isFree = !occupyingClass;
                         return (
-                          <div key={room} className={`p-3 rounded-lg border ${isFree ? 'border-green-200 bg-green-50 dark:bg-green-900/10 dark:border-green-900/30' : 'border-red-100 bg-red-50/50 dark:bg-red-900/10 dark:border-red-900/20'}`}>
+                          <div 
+                            key={room} 
+                            onClick={!isFree ? () => setSelectedEntry(occupyingClass!) : undefined}
+                            className={`p-3 rounded-lg border ${isFree ? 'border-green-200 bg-green-50 dark:bg-green-900/10 dark:border-green-900/30' : 'border-red-100 bg-red-50/50 dark:bg-red-900/10 dark:border-red-900/20 cursor-pointer hover:border-red-300 dark:hover:border-red-700 transition-colors'}`}
+                          >
                             <div className="font-bold text-sm mb-1">{room}</div>
                             {isFree ? (
                               <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider text-green-600 dark:text-green-400">
@@ -1019,7 +1030,7 @@ export default function Index() {
                                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5" /> NOT AVAILABLE
                                 </span>
                                 <span className="text-[10px] text-muted-foreground truncate" title={`${occupyingClass.course} (${occupyingClass.section})`}>
-                                  {occupyingClass.course} ({occupyingClass.section})
+                                  {occupyingClass.course} (Sem {occupyingClass.semester}, Sec {occupyingClass.section})
                                 </span>
                               </div>
                             )}
@@ -1037,74 +1048,89 @@ export default function Index() {
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedEntry} onOpenChange={(open) => !open && setSelectedEntry(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="font-heading text-xl font-bold">{selectedEntry?.course}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <Clock className="h-5 w-5 text-primary" />
+        {selectedEntry && (
+          <DialogContent className="sm:max-w-md rounded-2xl">
+            <DialogHeader>
+              <DialogTitle className="font-heading text-xl font-bold">{selectedEntry.course}</DialogTitle>
+              {COURSE_NAMES[selectedEntry.course] && (
+                <p className="text-sm text-muted-foreground">{COURSE_NAMES[selectedEntry.course]}</p>
+              )}
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                  <Clock className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Class Time</p>
+                  <p className="text-sm font-semibold">
+                    {`${selectedEntry.startTime || SLOTS.find(s => s.slot === selectedEntry.slot)?.start} - ${selectedEntry.endTime || SLOTS.find(s => s.slot === selectedEntry.slot)?.end}`}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Class Time</p>
-                <p className="text-sm font-semibold">
-                  {selectedEntry?.startTime} - {selectedEntry?.endTime || SLOTS.find(s => s.slot === selectedEntry?.slot)?.end}
-                </p>
+              
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
+                  <MapPin className="h-5 w-5 text-secondary-foreground" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Location</p>
+                  <p className="text-sm font-semibold">Room {selectedEntry.room}</p>
+                </div>
               </div>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
-                <MapPin className="h-5 w-5 text-secondary-foreground" />
+              
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
+                  <GraduationCap className="h-5 w-5 text-secondary-foreground" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Semester & Section</p>
+                  <p className="text-sm font-semibold">{selectedEntry.semester}th Sem, Sec {selectedEntry.section}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Location</p>
-                <p className="text-sm font-semibold">Room {selectedEntry?.room}</p>
-              </div>
-            </div>
 
-            <div className="space-y-3">
-              <p className="text-xs font-medium text-muted-foreground">Teacher Info</p>
-              {selectedEntry?.teachers.map((name, idx) => {
-                const normName = normalizeTeacherName(cleanTeacherName(name));
-                const info = teacherInfo.find(t => {
-                  const normTName = normalizeTeacherName(t.name);
-                  const normTInitials = normalizeTeacherName(t.initials || "");
-                  return normTName.includes(normName) || normName.includes(normTName) || (normTInitials && normTInitials === normName);
-                });
-                return (
-                  <div key={idx} className="rounded-xl border p-4 space-y-2">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20">
-                        <User className="h-5 w-5 text-primary" />
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-muted-foreground">Teacher Info</p>
+                {selectedEntry.teachers.map((name, idx) => {
+                  const normName = normalizeTeacherName(cleanTeacherName(name));
+                  const info = teacherInfo.find(t => {
+                    const normTName = normalizeTeacherName(t.name);
+                    const normTInitials = normalizeTeacherName(t.initials || "");
+                    return normTName.includes(normName) || normName.includes(normTName) || (normTInitials && normTInitials === normName);
+                  });
+                  return (
+                    <div key={idx} className="rounded-xl border p-4 space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20">
+                          <User className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold">{cleanTeacherName(info?.name || name)}</p>
+                          <p className="text-xs text-muted-foreground">{info?.designation || "Faculty Member"}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-bold">{cleanTeacherName(info?.name || name)}</p>
-                        <p className="text-xs text-muted-foreground">{info?.designation || "Faculty Member"}</p>
-                      </div>
+                      {info?.phone && (
+                        <a 
+                          href={`tel:${info.phone}`}
+                          className="flex items-center gap-2 rounded-lg bg-primary/5 p-2 text-sm text-primary transition-colors hover:bg-primary/10"
+                        >
+                          <Phone className="h-4 w-4" />
+                          <span>{info.phone}</span>
+                          <span className="ml-auto text-xs opacity-60">Call now</span>
+                        </a>
+                      )}
                     </div>
-                    {info?.phone && (
-                      <a 
-                        href={`tel:${info.phone}`}
-                        className="flex items-center gap-2 rounded-lg bg-primary/5 p-2 text-sm text-primary transition-colors hover:bg-primary/10"
-                      >
-                        <Phone className="h-4 w-4" />
-                        <span>{info.phone}</span>
-                        <span className="ml-auto text-xs opacity-60">Call now</span>
-                      </a>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        </DialogContent>
+          </DialogContent>
+        )}
       </Dialog>
 
       {/* Teacher Directory Dialog */}
       <Dialog open={isTeacherDirOpen} onOpenChange={setIsTeacherDirOpen}>
-        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col rounded-2xl">
           <DialogHeader>
             <DialogTitle className="font-heading text-xl font-bold flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" />
@@ -1231,7 +1257,7 @@ export default function Index() {
             <div className="flex justify-center py-4">
               <div className="h-24 w-24 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-xl relative overflow-hidden border-4 border-background">
                 <img 
-                  src={`https://github.com/${adminSettings.githubUsername || "mafikul01"}.png`} 
+                  src={adminSettings.devProfileImage || `https://github.com/${adminSettings.githubUsername || "mafikul01"}.png`} 
                   alt="Developer" 
                   className="h-full w-full object-cover"
                   referrerPolicy="no-referrer"
@@ -1444,6 +1470,16 @@ export default function Index() {
                       value={devWhatsapp}
                       onChange={(e) => setDevWhatsapp(e.target.value)}
                       className="w-full rounded-lg border bg-card p-2 text-sm outline-none"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Custom Profile Image URL (Overwrites GitHub)</label>
+                    <input
+                      type="text"
+                      value={newProfileImage}
+                      onChange={(e) => setNewProfileImage(e.target.value)}
+                      className="w-full rounded-lg border bg-card p-2 text-sm outline-none"
+                      placeholder="https://example.com/photo.jpg"
                     />
                   </div>
                 </div>
