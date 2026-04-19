@@ -34,6 +34,8 @@ export function ThemeProvider({
     const root = window.document.documentElement;
 
     root.classList.remove("light", "dark");
+    
+    let activeTheme = theme;
 
     if (theme === "system") {
       const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
@@ -41,11 +43,43 @@ export function ThemeProvider({
         ? "dark"
         : "light";
 
-      root.classList.add(systemTheme);
-      return;
+      activeTheme = systemTheme;
     }
+    
+    root.classList.add(activeTheme);
+    
+    // Update theme-color meta tag for mobile status bar
+    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (!metaThemeColor) {
+      metaThemeColor = document.createElement("meta");
+      metaThemeColor.setAttribute("name", "theme-color");
+      document.head.appendChild(metaThemeColor);
+    }
+    // #020817 is the HSL equivalent of 222.2 84% 4.9% used in the dark background
+    metaThemeColor.setAttribute("content", activeTheme === "dark" ? "#020817" : "#ffffff");
 
-    root.classList.add(theme);
+  }, [theme]);
+
+  // Listen for system theme changes if theme is set to 'system'
+  useEffect(() => {
+    if (theme !== "system") return;
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = () => {
+      const root = window.document.documentElement;
+      const systemTheme = mediaQuery.matches ? "dark" : "light";
+      
+      root.classList.remove("light", "dark");
+      root.classList.add(systemTheme);
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      if (metaThemeColor) {
+        metaThemeColor.setAttribute("content", systemTheme === "dark" ? "#020817" : "#ffffff");
+      }
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
   }, [theme]);
 
   const value = {

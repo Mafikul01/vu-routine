@@ -17,7 +17,7 @@ import {
   ClassEntry,
   routineData as staticRoutineData,
 } from "@/data/routineData";
-import { GraduationCap, User, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, Code, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote } from "lucide-react";
+import { GraduationCap, User, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, Code, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote, FileText } from "lucide-react";
 import { useTheme } from "@/components/ThemeContext";
 import { toast } from "@/components/ui/sonner";
 import { motion, AnimatePresence } from "motion/react";
@@ -150,7 +150,39 @@ export default function Index() {
   const [devFacebook, setDevFacebook] = useState("");
   const [devLinkedin, setDevLinkedin] = useState("");
   const [devWhatsapp, setDevWhatsapp] = useState("");
-  
+
+  const isAnyDialogOpen = !!selectedEntry || isRoomFinderOpen || isTeacherDirOpen || isDevInfoOpen || isAdminDialogOpen || isMenuOpen;
+  const wasAnyDialogOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (isAnyDialogOpen && !wasAnyDialogOpenRef.current) {
+      window.history.pushState({ dialogOpen: true }, '');
+      wasAnyDialogOpenRef.current = true;
+    } else if (!isAnyDialogOpen && wasAnyDialogOpenRef.current) {
+      wasAnyDialogOpenRef.current = false;
+      if (window.history.state?.dialogOpen) {
+        window.history.back();
+      }
+    }
+  }, [isAnyDialogOpen]);
+
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (wasAnyDialogOpenRef.current) {
+        setSelectedEntry(null);
+        setIsRoomFinderOpen(false);
+        setIsTeacherDirOpen(false);
+        setIsDevInfoOpen(false);
+        setIsAdminDialogOpen(false);
+        setIsMenuOpen(false);
+        wasAnyDialogOpenRef.current = false;
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -667,6 +699,16 @@ export default function Index() {
                 </button>
               )}
               <div className="border-t my-1"></div>
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  window.open("https://vucover.vercel.app/", "_blank");
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
+              >
+                <FileText className="h-4 w-4" />
+                Make Cover Page
+              </button>
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
