@@ -207,6 +207,12 @@ export default function Index() {
 
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
+      // Handle role change screen
+      if (isChangingRole && role && e.state?.modal !== "changeRole") {
+        setIsChangingRole(false);
+      }
+
+      // Handle general dialogs
       if (wasAnyDialogOpenRef.current) {
         setSelectedEntry(null);
         setIsRoomFinderOpen(false);
@@ -220,7 +226,7 @@ export default function Index() {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [isChangingRole, role]);
 
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (u) => {
@@ -616,17 +622,6 @@ export default function Index() {
       })
     : teachers;
 
-  useEffect(() => {
-    const handlePopState = (e: PopStateEvent) => {
-      // If the back button is pressed while on the change role screen, return to the previous role.
-      if (isChangingRole && role && e.state?.modal !== "changeRole") {
-        setIsChangingRole(false);
-      }
-    };
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [isChangingRole, role]);
-
   if (isChangingRole || !role) {
     // Current role will be in 2nd position, other role in 1st.
     const isStudent = role === "student";
@@ -830,13 +825,12 @@ export default function Index() {
       <AnimatePresence>
         {notice.active && notice.text && (!hasDismissedNotice || notice.type === "important") && (
           <motion.div 
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={{ 
               opacity: 0, 
               x: Math.abs(swipeOffset.x) > Math.abs(swipeOffset.y) ? (swipeOffset.x > 0 ? 100 : -100) : 0,
               y: Math.abs(swipeOffset.y) >= Math.abs(swipeOffset.x) ? (swipeOffset.y > 0 ? 100 : -100) : 0,
-              scale: 0.9,
               filter: "blur(10px)",
               transition: { duration: 0.2 }
             }}
@@ -1359,13 +1353,12 @@ export default function Index() {
         <AnimatePresence>
           {localToast && (
             <motion.div
-              initial={{ opacity: 0, y: 50, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
               exit={{ 
                 opacity: 0, 
                 x: Math.abs(toastSwipeOffset.x) > 30 ? (toastSwipeOffset.x > 0 ? 100 : -100) : 0,
                 y: Math.abs(toastSwipeOffset.y) > 30 ? (toastSwipeOffset.y > 0 ? 50 : -50) : 0,
-                scale: 0.8,
                 filter: "blur(5px)",
                 transition: { duration: 0.2 }
               }}
