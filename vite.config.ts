@@ -23,15 +23,23 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ['**/*.{js,css,html,ico,png,svg}']
       },
       manifest: {
-        name: 'Class Routine App',
-        short_name: 'Routine',
+        name: 'Vu Routine',
+        short_name: 'Vu Routine',
         description: 'Offline capable class routine app',
         theme_color: '#ffffff',
+        background_color: '#ffffff',
+        display: 'standalone',
         icons: [
           {
-            src: 'https://cdn-icons-png.flaticon.com/512/1043/1043306.png',
-            sizes: '512x512',
+            src: '/logo.png',
+            sizes: '192x192',
             type: 'image/png'
+          },
+          {
+            src: '/logo.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable'
           }
         ]
       }

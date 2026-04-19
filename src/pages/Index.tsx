@@ -612,11 +612,11 @@ export default function Index() {
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="w-full max-w-sm space-y-6 text-center">
           <div>
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-              <BookOpen className="h-8 w-8 text-primary" />
+            <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-2xl overflow-hidden">
+              <img src="/logo.png" alt="Vu Routine Logo" className="h-full w-full object-contain" />
             </div>
-            <h1 className="font-heading text-2xl font-bold">Vu Routine</h1>
-            <p className="mt-1 text-sm text-muted-foreground">CSE Department</p>
+            <h1 className="font-heading text-2xl font-bold">Vu Routine & Finder</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Navigate Your Studies at Vu</p>
           </div>
           <div className="space-y-3">
             <p className="text-sm font-medium text-muted-foreground">
