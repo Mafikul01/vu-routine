@@ -1,4 +1,5 @@
 import { DAYS } from "@/data/routineData";
+import { useMemo } from "react";
 
 interface DayPickerProps {
   selectedDay: string;
@@ -8,8 +9,8 @@ interface DayPickerProps {
 
 export function DayPicker({ selectedDay, onSelectDay, freeDays = [] }: DayPickerProps) {
   // Compute dates for the current week starting roughly around today
-  const today = new Date();
-  const getWeekDates = () => {
+  const datesMap = useMemo(() => {
+    const today = new Date();
     const dates: Record<string, string> = {};
     DAYS.forEach(dayStr => {
       // Find the closest upcoming or current matching day
@@ -19,10 +20,6 @@ export function DayPicker({ selectedDay, onSelectDay, freeDays = [] }: DayPicker
       const currentDayOfWeek = today.getDay();
       
       const distance = targetDayOfWeek - currentDayOfWeek;
-      // If we want to always show the upcoming days rather than strictly this Sunday-Saturday week:
-      // if distance is less than -1 (e.g. it's wednesday and target is monday), wrap around to next week. (Optional)
-      // Actually, standard is to show just the dates of the current week (Sunday to Thursday).
-      // So distance from today to target day:
       const diff = today.getDate() + distance;
       targetDate.setDate(diff);
       
@@ -31,9 +28,7 @@ export function DayPicker({ selectedDay, onSelectDay, freeDays = [] }: DayPicker
       dates[dayStr] = `${dayNum} ${monthPrefix}`;
     });
     return dates;
-  };
-
-  const datesMap = getWeekDates();
+  }, []);
 
   return (
     <div className="grid grid-cols-7 gap-1 pb-1">
@@ -45,7 +40,7 @@ export function DayPicker({ selectedDay, onSelectDay, freeDays = [] }: DayPicker
           <button
             key={day}
             onClick={() => onSelectDay(day)}
-            className={`flex flex-col items-center justify-center rounded-lg py-1.5 transition-all ${
+            className={`flex flex-col items-center justify-center rounded-lg py-1.5 transition-all active:scale-90 ${
               isSelected
                 ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/20"
                 : isFree

@@ -1,4 +1,5 @@
 import { ClassEntry, SLOTS, cleanTeacherName } from "@/data/routineData";
+import { memo } from "react";
 
 const slotColors: Record<number, string> = {
   1: "border-l-slot-1 bg-slot-1/5",
@@ -14,14 +15,14 @@ interface ClassCardProps {
   showSection?: boolean;
 }
 
-export function ClassCard({ entry, showSection = false }: ClassCardProps) {
+export const ClassCard = memo(function ClassCard({ entry, showSection = false }: ClassCardProps) {
   const slotInfo = SLOTS.find(s => s.slot === entry.slot);
   const displayStartTime = entry.startTime || entry.slotTime || slotInfo?.start;
   const displayEndTime = entry.endTime || slotInfo?.end;
   
   return (
     <div
-      className={`rounded-lg border-l-4 p-4 ${slotColors[entry.slot] || "bg-card border-l-gray-300"} animate-fade-in shadow-sm hover:shadow-md transition-shadow`}
+      className={`rounded-lg border-l-4 p-4 ${slotColors[entry.slot] || "bg-card border-l-gray-300"} shadow-sm hover:shadow-md transition-shadow will-change-transform`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -55,4 +56,4 @@ export function ClassCard({ entry, showSection = false }: ClassCardProps) {
       </div>
     </div>
   );
-}
+});
