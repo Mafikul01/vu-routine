@@ -813,7 +813,13 @@ export default function Index() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-lg p-4 pb-20 relative">
+    <div 
+      className="mx-auto min-h-screen max-w-lg p-4 pb-20 relative"
+      style={{ 
+        transform: `translateY(${pullY}px)`,
+        transition: isPulling ? 'none' : 'transform 0.4s cubic-bezier(0.19, 1, 0.22, 1)'
+      }}
+    >
       {/* Header */}
       <div className="mb-5 flex items-center justify-between relative z-50">
         <div>
