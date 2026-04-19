@@ -28,6 +28,14 @@ import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged,
 import { User as FirebaseUser } from "firebase/auth";
 import { doc, onSnapshot, updateDoc, setDoc } from "firebase/firestore";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 const DEFAULT_SHEET = "https://docs.google.com/spreadsheets/d/1Sdmr60rcZeBCa2ofswUr9mxIreIj71W9HYM1RRhvfMM/edit";
 const INFO_GID = "989827005";
 
@@ -206,9 +214,42 @@ export default function Index() {
   }, [isAnyDialogOpen]);
 
   useEffect(() => {
-    // Prevent browser "peek" animation on home page by maintaining a base state
-    if (role && !isChangingRole && !isAnyDialogOpen) {
-      if (!window.history.state || (!window.history.state.home && !window.history.state.dialogOpen && !window.history.state.modal)) {
+    const primeHistory = () => {
+      if (role && !isChangingRole && !isAnyDialogOpen) {
+        if (!window.history.state || (!window.history.state.home && !window.history.state.dialogOpen && !window.history.state.modal)) {
+          window.history.replaceState({ app: true }, '');
+          window.history.pushState({ home: true }, '');
+        }
+      }
+      // Keep listeners active until at least one push occurs through interaction
+    };
+
+    // Attempt immediately on mount/update
+    primeHistory();
+
+    const handleInteraction = () => {
+      primeHistory();
+      // Once we've had a real interaction, we can be more confident the state stuck
+      window.removeEventListener('touchstart', handleInteraction);
+      window.removeEventListener('mousedown', handleInteraction);
+      window.removeEventListener('scroll', handleInteraction);
+    };
+
+    window.addEventListener('touchstart', handleInteraction, { passive: true, capture: true });
+    window.addEventListener('mousedown', handleInteraction, { capture: true });
+    window.addEventListener('scroll', handleInteraction, { passive: true, capture: true });
+
+    return () => {
+      window.removeEventListener('touchstart', handleInteraction);
+      window.removeEventListener('mousedown', handleInteraction);
+      window.removeEventListener('scroll', handleInteraction);
+    };
+  }, [role, isChangingRole, isAnyDialogOpen]);
+
+  // Special case: prime history immediately upon role selection to gain gesture "credit"
+  useEffect(() => {
+    if (role && !isChangingRole && !isAnyDialogOpen && window.history.state?.modal === "changeRole") {
+      if (!window.history.state?.home) {
         window.history.pushState({ home: true }, '');
       }
     }
@@ -587,6 +628,12 @@ export default function Index() {
   const handleRoleSelect = (r: Role) => {
     setRole(r);
     setIsChangingRole(false);
+    
+    // Crucial: Push home state immediately on the back of this user interaction
+    if (!window.history.state?.home) {
+      window.history.pushState({ home: true }, "");
+    }
+
     if (window.history.state?.modal === "changeRole") {
       window.history.back();
     }
@@ -703,7 +750,7 @@ export default function Index() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-lg p-4 pb-20 relative">
+    <div className="mx-auto min-h-screen max-w-lg p-4 pb-20 relative" style={{ touchAction: 'pan-y' }}>
       {/* Header */}
       <div className="mb-5 flex items-center justify-between relative z-50">
         <div>
@@ -902,42 +949,40 @@ export default function Index() {
         <div className="mb-5 flex gap-3">
           <div className="flex-1">
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Semester</label>
-            <div className="relative">
-              <select
-                value={semester}
-                onChange={e => setSemester(Number(e.target.value))}
-                className="w-full appearance-none rounded-lg border bg-card py-2.5 pl-3 pr-8 text-sm outline-none focus:border-blue-500 font-medium"
-              >
+            <Select 
+              value={String(semester)} 
+              onValueChange={(val) => setSemester(Number(val))}
+            >
+              <SelectTrigger className="font-medium">
+                <SelectValue placeholder="Semester" />
+              </SelectTrigger>
+              <SelectContent>
                 {SEMESTERS.map(sem => (
-                  <option key={sem} value={sem}>{sem}{sem === 1 ? 'st' : sem === 2 ? 'nd' : sem === 3 ? 'rd' : 'th'} Semester</option>
+                  <SelectItem key={sem} value={String(sem)}>
+                    {sem}{sem === 1 ? 'st' : sem === 2 ? 'nd' : sem === 3 ? 'rd' : 'th'} Semester
+                  </SelectItem>
                 ))}
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-            </div>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex-1">
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Section</label>
-            <div className="relative">
-              <select
-                value={section}
-                onChange={e => setSection(e.target.value)}
-                className="w-full appearance-none rounded-lg border bg-card py-2.5 pl-3 pr-8 text-sm outline-none focus:border-blue-500 font-medium"
-              >
+            <Select 
+              value={section} 
+              onValueChange={setSection}
+            >
+              <SelectTrigger className="font-medium">
+                <SelectValue placeholder="Section" />
+              </SelectTrigger>
+              <SelectContent>
                 {availableSections.map(sec => (
-                  <option key={sec} value={sec}>Section {sec}</option>
+                  <SelectItem key={sec} value={sec}>
+                    Section {sec}
+                  </SelectItem>
                 ))}
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-            </div>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       )}
