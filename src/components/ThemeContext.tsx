@@ -55,8 +55,8 @@ export function ThemeProvider({
       metaThemeColor.setAttribute("name", "theme-color");
       document.head.appendChild(metaThemeColor);
     }
-    // #020817 is the HSL equivalent of 222.2 84% 4.9% used in the dark background
-    metaThemeColor.setAttribute("content", activeTheme === "dark" ? "#020817" : "#ffffff");
+    // Use exact HSL string to prevent browser color-rounding line artifact
+    metaThemeColor.setAttribute("content", activeTheme === "dark" ? "hsl(222.2, 84%, 4.9%)" : "#ffffff");
 
   }, [theme]);
 
@@ -74,7 +74,7 @@ export function ThemeProvider({
       
       const metaThemeColor = document.querySelector('meta[name="theme-color"]');
       if (metaThemeColor) {
-        metaThemeColor.setAttribute("content", systemTheme === "dark" ? "#020817" : "#ffffff");
+        metaThemeColor.setAttribute("content", systemTheme === "dark" ? "hsl(222.2, 84%, 4.9%)" : "#ffffff");
       }
     };
 

@@ -379,63 +379,75 @@ export default function Index() {
     let failCount = 0;
     
     try {
-      // 1. Fetch Teachers Info from dynamic settings
-      try {
-        const infoUrl = getGoogleSheetCsvUrlByGid(adminSettings.mainSheetUrl, adminSettings.infoGid);
-        const infoResponse = await fetch(infoUrl);
-        if (infoResponse.ok) {
-          const infoCsv = await infoResponse.text();
-          let teachers = parseTeacherCsv(infoCsv);
-          
-          // Custom injection/cleanup
-          if (!teachers.some(t => t.name.includes("Faisal Aziz") || t.name.includes("Eco New teacher 3"))) {
-            teachers.push({
-              name: "Faisal Aziz",
-              phone: "+8801717843998",
-              initials: "FA",
-              designation: "Lecturer",
-              department: "ECO",
-              email: "",
-              officeRoom: ""
-            });
-          }
-          
-          // Clean names in teacher info and enrich Faisal Aziz data
-          teachers = teachers.map(t => {
-            const cleanedName = cleanTeacherName(t.name);
-            if (cleanedName === "Faisal Aziz") {
+      // 1. Fetch Teachers Info (runs in parallel with routine fetch)
+      const fetchTeacherInfo = async () => {
+        try {
+          const infoUrl = getGoogleSheetCsvUrlByGid(adminSettings.mainSheetUrl, adminSettings.infoGid);
+          const infoResponse = await fetch(infoUrl);
+          if (infoResponse.ok) {
+            const infoCsv = await infoResponse.text();
+            let teachers = parseTeacherCsv(infoCsv);
+            
+            // Custom injection/cleanup
+            if (!teachers.some(t => t.name.includes("Faisal Aziz") || t.name.includes("Eco New teacher 3"))) {
+              teachers.push({
+                name: "Faisal Aziz",
+                phone: "+8801717843998",
+                initials: "FA",
+                designation: "Lecturer",
+                department: "ECO",
+                email: "",
+                officeRoom: ""
+              });
+            }
+            
+            // Clean names in teacher info and enrich Faisal Aziz data
+            teachers = teachers.map(t => {
+              const cleanedName = cleanTeacherName(t.name);
+              if (cleanedName === "Faisal Aziz") {
+                return {
+                  ...t,
+                  name: "Faisal Aziz",
+                  phone: t.phone || "+8801717843998",
+                  designation: (!t.designation || t.designation === "Faculty Member") ? "Lecturer" : t.designation,
+                  department: t.department || "ECO",
+                  initials: t.initials || "FA"
+                };
+              }
               return {
                 ...t,
-                name: "Faisal Aziz",
-                phone: t.phone || "+8801717843998",
-                designation: (!t.designation || t.designation === "Faculty Member") ? "Lecturer" : t.designation,
-                department: t.department || "ECO",
-                initials: t.initials || "FA"
+                name: cleanedName
               };
-            }
-            return {
-              ...t,
-              name: cleanedName
-            };
-          });
+            });
 
-          setTeacherInfo(teachers);
-          localStorage.setItem("cached-teachers", JSON.stringify(teachers));
-          successCount++;
-        } else {
-          console.warn(`Teacher info fetch failed: ${infoResponse.status}`);
+            setTeacherInfo(teachers);
+            localStorage.setItem("cached-teachers", JSON.stringify(teachers));
+            successCount++;
+          } else {
+            console.warn(`Teacher info fetch failed: ${infoResponse.status}`);
+            failCount++;
+          }
+        } catch (e) {
+          console.error("Teacher sync error:", e);
           failCount++;
         }
-      } catch (e) {
-        console.error("Teacher sync error:", e);
-        failCount++;
-      }
+      };
+
+      const teacherPromise = fetchTeacherInfo();
 
       // 2. Fetch Routine from dynamic settings
       const relevantGids = adminSettings.semesterGids || SEMESTER_GIDS;
-      const allSessions: ClassEntry[] = [];
       
-      const sessionPromises = Object.entries(relevantGids).map(async ([sem, gid]) => {
+      const gidsArray = Object.entries(relevantGids);
+      // Sort so the selected semester is prioritized!
+      gidsArray.sort(([semA], [semB]) => {
+          const selectedSemStr = semester.toString();
+          if (semA === selectedSemStr) return -1;
+          if (semB === selectedSemStr) return 1;
+          return 0;
+      });
+
+      const sessionPromises = gidsArray.map(async ([sem, gid]) => {
         try {
           const csvUrl = getGoogleSheetCsvUrlByGid(adminSettings.mainSheetUrl, gid);
           const response = await fetch(csvUrl);
@@ -445,7 +457,14 @@ export default function Index() {
           }
           const csvText = await response.text();
           const sems = parseRoutineCsv(csvText, parseInt(sem, 10));
-          if (sems.length > 0) successCount++;
+          if (sems.length > 0) {
+            successCount++;
+            // Incrementally update UI with this semester's data immediately so it feels fast
+            setCurrentRoutine(prev => {
+              const otherSems = prev.filter(c => c.semester !== parseInt(sem, 10));
+              return [...otherSems, ...sems];
+            });
+          }
           return sems;
         } catch (e) {
           console.error(`Error fetching Sem ${sem}:`, e);
@@ -453,7 +472,12 @@ export default function Index() {
         }
       });
 
-      const results = await Promise.all(sessionPromises);
+      // Wait for both teacher fetch and all routine fetches to complete
+      const [results] = await Promise.all([
+        Promise.all(sessionPromises),
+        teacherPromise
+      ]);
+
       const flattened = results.flat();
 
       if (flattened.length > 0) {
