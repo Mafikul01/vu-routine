@@ -665,7 +665,7 @@ export default function Index() {
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="w-full max-w-sm space-y-6 text-center">
           <div>
-            <div className="mx-auto mb-6 flex items-center justify-center rounded-3xl overflow-hidden p-2">
+            <div className="mx-auto mb-6 flex items-center justify-center rounded-2xl overflow-hidden p-2">
               <img src="/logo.png" alt="Vu Routine Logo" className="object-contain" style={{ width: '250px', height: '250px', marginTop: '-7px' }} />
             </div>
           </div>
@@ -693,7 +693,7 @@ export default function Index() {
   return (
     <div className="mx-auto min-h-screen max-w-lg p-4 pb-20 relative">
       {/* Header */}
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-5 flex items-center justify-between relative z-50">
         <div>
           <div className="flex items-center gap-3 mb-1">
             <img src="/logo.png" alt="My Routine" style={{ width: '38px', height: '38px' }} className="object-contain drop-shadow-sm" />
@@ -746,7 +746,7 @@ export default function Index() {
 
           {/* Dropdown Menu */}
           {isMenuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border bg-card p-1 shadow-lg z-40 animate-fade-in">
+            <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border bg-card p-1 shadow-lg z-50 animate-fade-in">
               <button
                 onClick={() => {
                   setIsMenuOpen(false);
@@ -854,9 +854,9 @@ export default function Index() {
                 setSwipeOffset({ x: 0, y: 0 });
               }
             }}
-            className="mb-5 cursor-grab active:cursor-grabbing touch-none select-none relative z-40"
+            className="mb-5 cursor-grab active:cursor-grabbing touch-none select-none relative z-30"
           >
-            <div className={`flex items-start gap-3 rounded-xl p-4 border shadow-sm transition-colors ${notice.type === "important" ? "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900/50" : "bg-primary/10 border-primary/20 dark:bg-primary/5 dark:border-primary/20"}`}>
+            <div className={`flex items-start gap-3 rounded-2xl p-4 border shadow-sm transition-colors ${notice.type === "important" ? "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900/50" : "bg-primary/10 border-primary/20 dark:bg-primary/5 dark:border-primary/20"}`}>
               {notice.type === "important" ? (
                 <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
               ) : (
@@ -981,7 +981,7 @@ export default function Index() {
         {currentTime.hour >= 18 && selectedDay === ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][(currentTime.dayIndex + 1) % 7] && (
           <motion.div 
             initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
-            className="mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-orange-100/50 dark:bg-orange-950/30 px-3 py-2 text-xs font-medium text-orange-600 dark:text-orange-400 border border-orange-200/50 dark:border-orange-900/50"
+            className="mt-3 flex items-center justify-center gap-1.5 rounded-xl bg-orange-100/50 dark:bg-orange-950/30 px-3 py-2 text-xs font-medium text-orange-600 dark:text-orange-400 border border-orange-200/50 dark:border-orange-900/50"
           >
             <Clock className="h-3.5 w-3.5 animate-[spin_4s_linear_infinite]" />
             Showing Tomorrow's Schedule
@@ -1204,7 +1204,7 @@ export default function Index() {
       {/* Detail Dialog */}
       <Dialog open={!!selectedEntry} onOpenChange={(open) => !open && setSelectedEntry(null)}>
         {selectedEntry && (
-          <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="font-heading text-xl font-bold">{selectedEntry.course}</DialogTitle>
               {COURSE_NAMES[selectedEntry.course] && (
@@ -1285,7 +1285,7 @@ export default function Index() {
 
       {/* Teacher Directory Dialog */}
       <Dialog open={isTeacherDirOpen} onOpenChange={setIsTeacherDirOpen}>
-        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col rounded-2xl">
+        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="font-heading text-xl font-bold flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" />
@@ -1502,7 +1502,7 @@ export default function Index() {
           </DialogHeader>
           <div className="space-y-6 py-4">
             {/* Notice Management */}
-            <div className="space-y-3">
+            <div className="space-y-3 bg-secondary/10 p-4 rounded-2xl border border-border/50">
               <div className="flex items-center justify-between">
                 <h4 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
                   <Bell className="h-4 w-4" />
@@ -1515,16 +1515,16 @@ export default function Index() {
                   {notice.active ? 'Visible' : 'Hidden'}
                 </button>
               </div>
-              <div className="flex bg-secondary p-1 rounded-lg">
+              <div className="flex bg-secondary p-1 rounded-xl">
                 <button
                   onClick={() => setNewNoticeType("normal")}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${newNoticeType === "normal" ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${newNoticeType === "normal" ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
                 >
                   Normal
                 </button>
                 <button
                   onClick={() => setNewNoticeType("important")}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${newNoticeType === "important" ? 'bg-red-500 shadow text-white' : 'text-muted-foreground hover:bg-background/50'}`}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${newNoticeType === "important" ? 'bg-red-500 shadow text-white' : 'text-muted-foreground hover:bg-background/50'}`}
                 >
                   Important
                 </button>
@@ -1533,20 +1533,18 @@ export default function Index() {
                 value={newNoticeText}
                 onChange={(e) => setNewNoticeText(e.target.value)}
                 placeholder="Enter notice text here..."
-                className="w-full h-24 rounded-lg border bg-card p-3 text-sm outline-none focus:border-primary resize-none"
+                className="w-full h-24 rounded-xl border bg-card p-3 text-sm outline-none focus:border-primary resize-none"
               />
               <button
                 onClick={updateNotice}
-                className="w-full rounded-lg bg-primary py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
+                className="w-full rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
               >
                 Update Notice & Push Live
               </button>
             </div>
 
-            <div className="h-px bg-border"></div>
-
             {/* Config Management */}
-            <div className="space-y-3">
+            <div className="space-y-3 bg-secondary/10 p-4 rounded-2xl border border-border/50">
               <h4 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
                 <Settings className="h-4 w-4" />
                 App Configuration
@@ -1558,7 +1556,7 @@ export default function Index() {
                     type="text"
                     value={newMainSheetUrl}
                     onChange={(e) => setNewMainSheetUrl(e.target.value)}
-                    className="w-full rounded-lg border bg-card p-2.5 text-sm outline-none focus:border-primary"
+                    className="w-full rounded-xl border bg-card p-2.5 text-sm outline-none focus:border-primary"
                   />
                 </div>
                 <div>
@@ -1567,7 +1565,7 @@ export default function Index() {
                     type="text"
                     value={newInfoGid}
                     onChange={(e) => setNewInfoGid(e.target.value)}
-                    className="w-full rounded-lg border bg-card p-2.5 text-sm outline-none focus:border-primary"
+                    className="w-full rounded-xl border bg-card p-2.5 text-sm outline-none focus:border-primary"
                   />
                 </div>
                 
@@ -1579,7 +1577,7 @@ export default function Index() {
                       type="text"
                       value={devName}
                       onChange={(e) => setDevName(e.target.value)}
-                      className="w-full rounded-lg border bg-card p-2 text-sm outline-none"
+                      className="w-full rounded-xl border bg-card p-2 text-sm outline-none"
                     />
                   </div>
                   <div>
@@ -1588,7 +1586,7 @@ export default function Index() {
                       type="text"
                       value={devStudentId}
                       onChange={(e) => setDevStudentId(e.target.value)}
-                      className="w-full rounded-lg border bg-card p-2 text-sm outline-none"
+                      className="w-full rounded-xl border bg-card p-2 text-sm outline-none"
                     />
                   </div>
                   <div>
@@ -1597,7 +1595,7 @@ export default function Index() {
                       type="text"
                       value={newGithubUsername}
                       onChange={(e) => setNewGithubUsername(e.target.value)}
-                      className="w-full rounded-lg border bg-card p-2 text-sm outline-none"
+                      className="w-full rounded-xl border bg-card p-2 text-sm outline-none"
                     />
                   </div>
                   <div>
@@ -1606,7 +1604,7 @@ export default function Index() {
                       type="text"
                       value={devLinkedin}
                       onChange={(e) => setDevLinkedin(e.target.value)}
-                      className="w-full rounded-lg border bg-card p-2 text-sm outline-none"
+                      className="w-full rounded-xl border bg-card p-2 text-sm outline-none"
                     />
                   </div>
                   <div>
@@ -1615,7 +1613,7 @@ export default function Index() {
                       type="text"
                       value={devFacebook}
                       onChange={(e) => setDevFacebook(e.target.value)}
-                      className="w-full rounded-lg border bg-card p-2 text-sm outline-none"
+                      className="w-full rounded-xl border bg-card p-2 text-sm outline-none"
                     />
                   </div>
                   <div>
@@ -1624,7 +1622,7 @@ export default function Index() {
                       type="text"
                       value={devWhatsapp}
                       onChange={(e) => setDevWhatsapp(e.target.value)}
-                      className="w-full rounded-lg border bg-card p-2 text-sm outline-none"
+                      className="w-full rounded-xl border bg-card p-2 text-sm outline-none"
                     />
                   </div>
                   <div className="col-span-2">
@@ -1633,7 +1631,7 @@ export default function Index() {
                       type="text"
                       value={newProfileImage}
                       onChange={(e) => setNewProfileImage(e.target.value)}
-                      className="w-full rounded-lg border bg-card p-2 text-sm outline-none"
+                      className="w-full rounded-xl border bg-card p-2 text-sm outline-none"
                       placeholder="https://example.com/photo.jpg"
                     />
                   </div>
@@ -1641,17 +1639,15 @@ export default function Index() {
 
                 <button
                   onClick={updateSettings}
-                  className="w-full rounded-lg bg-secondary py-2.5 text-sm font-bold text-secondary-foreground shadow-sm transition-all hover:bg-secondary/80 active:scale-[0.98]"
+                  className="w-full rounded-xl bg-secondary py-2.5 text-sm font-bold text-secondary-foreground shadow-sm transition-all hover:bg-secondary/80 active:scale-[0.98]"
                 >
                   Save Configuration
                 </button>
               </div>
             </div>
 
-            <div className="h-px bg-border"></div>
-
             {/* Admin Management */}
-            <div className="space-y-3">
+            <div className="space-y-3 bg-secondary/10 p-4 rounded-2xl border border-border/50">
               <h4 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
                 <Users className="h-4 w-4" />
                 Admin Management
@@ -1663,11 +1659,11 @@ export default function Index() {
                     placeholder="Enter email to add admin..."
                     value={newAdminEmail}
                     onChange={(e) => setNewAdminEmail(e.target.value)}
-                    className="flex-1 rounded-lg border bg-card p-2.5 text-sm outline-none focus:border-primary"
+                    className="flex-1 rounded-xl border bg-card p-2.5 text-sm outline-none focus:border-primary"
                   />
                   <button
                     onClick={addAdminEmail}
-                    className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
+                    className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
                   >
                     Add
                   </button>
@@ -1676,18 +1672,18 @@ export default function Index() {
                 <div className="mt-2 space-y-2">
                   <p className="text-xs font-medium text-muted-foreground">Current Admins:</p>
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between rounded bg-secondary/50 p-2 text-sm">
+                    <div className="flex items-center justify-between rounded-xl bg-secondary/50 p-2 text-sm">
                       <span className="font-medium">mafikulmovie@gmail.com</span>
                       <span className="text-[10px] font-bold uppercase text-primary">Root</span>
                     </div>
                     {adminSettings.adminEmails?.map((email) => {
                       if (email === "mafikulmovie@gmail.com") return null;
                       return (
-                        <div key={email} className="flex items-center justify-between rounded bg-secondary/50 p-2 text-sm">
+                        <div key={email} className="flex items-center justify-between rounded-xl bg-secondary/50 p-2 text-sm">
                           <span className="truncate pr-2">{email}</span>
                           <button 
                             onClick={() => removeAdminEmail(email)}
-                            className="text-red-500 hover:text-red-700 p-1 transition-colors"
+                            className="text-red-500 hover:text-red-700 p-1"
                             title="Remove Admin"
                           >
                             <X className="h-4 w-4" />
