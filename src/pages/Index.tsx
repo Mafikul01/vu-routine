@@ -1034,14 +1034,15 @@ export default function Index() {
             <span className="material-symbols-outlined text-[28px]">search_insights</span>
           </button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-md max-h-[85vh] p-0 flex flex-col">
+          <DialogHeader className="p-6 pb-2">
             <DialogTitle className="font-heading text-xl font-bold flex items-center gap-2">
               <MapPin className="h-5 w-5 text-blue-500" />
               Room Finder
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="flex-1 overflow-y-auto px-6 pb-8">
+            <div className="space-y-4 py-4">
             <div className="flex gap-1.5">
               <button
                 onClick={() => setRoomFinderMode("room")}
@@ -1198,7 +1199,8 @@ export default function Index() {
               </div>
             )}
           </div>
-        </DialogContent>
+        </div>
+      </DialogContent>
       </Dialog>
 
       {/* Detail Dialog */}
@@ -1493,16 +1495,17 @@ export default function Index() {
 
       {/* Admin Panel Dialog */}
       <Dialog open={isAdminDialogOpen} onOpenChange={setIsAdminDialogOpen}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-md max-h-[90vh] p-0 flex flex-col">
+          <DialogHeader className="p-6 pb-2">
             <DialogTitle className="font-heading text-xl font-bold flex items-center gap-2">
               <Lock className="h-5 w-5 text-blue-600" />
               Admin Dashboard
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-6 py-4">
-            {/* Notice Management */}
-            <div className="space-y-3 bg-secondary/10 p-4 rounded-2xl border border-border/50">
+          <div className="flex-1 overflow-y-auto px-6 pb-8">
+            <div className="space-y-6">
+              {/* Notice Management */}
+              <div className="space-y-3 bg-secondary/10 p-4 rounded-2xl border border-border/50">
               <div className="flex items-center justify-between">
                 <h4 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
                   <Bell className="h-4 w-4" />
@@ -1706,7 +1709,8 @@ export default function Index() {
               Version 1.0
             </p>
           </div>
-        </DialogContent>
+        </div>
+      </DialogContent>
       </Dialog>
     </div>
   );
