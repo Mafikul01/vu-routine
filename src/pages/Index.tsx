@@ -94,9 +94,31 @@ export default function Index() {
   const [section, setSection] = useState(() => localStorage.getItem("routine-section") || "A");
   const [selectedTeacher, setSelectedTeacher] = useState(() => localStorage.getItem("routine-teacher") || "");
   const [selectedDay, setSelectedDay] = useState(() => {
-    const today = getTodayName();
-    return DAYS.includes(today as typeof DAYS[number]) ? today : "Sunday";
+    const date = new Date();
+    const hours = date.getHours();
+    let dayIndex = date.getDay();
+    
+    // If past 6 PM (18:00), default to tomorrow
+    if (hours >= 18) {
+      dayIndex = (dayIndex + 1) % 7;
+    }
+    
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const initialDay = days[dayIndex];
+    return DAYS.includes(initialDay as typeof DAYS[number]) ? initialDay : "Sunday";
   });
+  const [currentTime, setCurrentTime] = useState(() => {
+    const now = new Date();
+    return { hour: now.getHours(), dayIndex: now.getDay() };
+  });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      setCurrentTime({ hour: now.getHours(), dayIndex: now.getDay() });
+    }, 60000); // Check every minute
+    return () => clearInterval(timer);
+  }, []);
   const [teacherSearch, setTeacherSearch] = useState("");
   const [currentRoutine, setCurrentRoutine] = useState<ClassEntry[]>(() => {
     const cached = localStorage.getItem("cached-routine");
@@ -542,6 +564,9 @@ export default function Index() {
   const handleRoleSelect = (r: Role) => {
     setRole(r);
     setIsChangingRole(false);
+    if (window.history.state?.modal === "changeRole") {
+      window.history.back();
+    }
     if (r === "teacher" && !selectedTeacher && teachers.length > 0) {
       setSelectedTeacher(teachers[0]);
     }
@@ -590,6 +615,17 @@ export default function Index() {
         return normT.includes(normS) || normS.includes(normT) || initials.toLowerCase().includes(normS.toLowerCase());
       })
     : teachers;
+
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      // If the back button is pressed while on the change role screen, return to the previous role.
+      if (isChangingRole && role && e.state?.modal !== "changeRole") {
+        setIsChangingRole(false);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [isChangingRole, role]);
 
   if (isChangingRole || !role) {
     // Current role will be in 2nd position, other role in 1st.
@@ -691,7 +727,10 @@ export default function Index() {
             <RefreshCcw className="h-4 w-4 text-secondary-foreground" />
           </button>
           <button
-            onClick={() => setIsChangingRole(true)}
+            onClick={() => {
+              window.history.pushState({ modal: "changeRole" }, "");
+              setIsChangingRole(true);
+            }}
             className="flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
           >
             <ArrowLeftRight className="h-3.5 w-3.5" />
@@ -939,6 +978,15 @@ export default function Index() {
       <div className="mb-5">
         <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Day</label>
         <DayPicker selectedDay={selectedDay} onSelectDay={setSelectedDay} freeDays={currentFreeDays} />
+        {currentTime.hour >= 18 && selectedDay === ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][(currentTime.dayIndex + 1) % 7] && (
+          <motion.div 
+            initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
+            className="mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-orange-100/50 dark:bg-orange-950/30 px-3 py-2 text-xs font-medium text-orange-600 dark:text-orange-400 border border-orange-200/50 dark:border-orange-900/50"
+          >
+            <Clock className="h-3.5 w-3.5 animate-[spin_4s_linear_infinite]" />
+            Showing Tomorrow's Schedule
+          </motion.div>
+        )}
       </div>
 
       {/* Classes list */}
