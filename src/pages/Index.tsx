@@ -206,13 +206,17 @@ export default function Index() {
   }, [isAnyDialogOpen]);
 
   useEffect(() => {
-    const handlePopState = (e: PopStateEvent) => {
-      // Handle role change screen
-      if (isChangingRole && role && e.state?.modal !== "changeRole") {
-        setIsChangingRole(false);
+    // Prevent browser "peek" animation on home page by maintaining a base state
+    if (role && !isChangingRole && !isAnyDialogOpen) {
+      if (!window.history.state || (!window.history.state.home && !window.history.state.dialogOpen && !window.history.state.modal)) {
+        window.history.pushState({ home: true }, '');
       }
+    }
+  }, [role, isChangingRole, isAnyDialogOpen]);
 
-      // Handle general dialogs
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      // If we popped back from a dialog or modal, handle that first
       if (wasAnyDialogOpenRef.current) {
         setSelectedEntry(null);
         setIsRoomFinderOpen(false);
@@ -221,6 +225,19 @@ export default function Index() {
         setIsAdminDialogOpen(false);
         setIsMenuOpen(false);
         wasAnyDialogOpenRef.current = false;
+        return;
+      }
+
+      // Handle transition back from role change screen
+      if (isChangingRole && role && e.state?.modal !== "changeRole") {
+        setIsChangingRole(false);
+        return;
+      }
+
+      // If we are on the home page and the back gesture is used, 
+      // we re-push the home state to prevent the browser's exit animation
+      if (role && !isChangingRole && !e.state?.home && !e.state?.dialogOpen && !e.state?.modal) {
+        window.history.pushState({ home: true }, '');
       }
     };
 
