@@ -26,8 +26,6 @@ export default defineConfig(({ mode }) => ({
         name: 'Vu Routine',
         short_name: 'Vu Routine',
         description: 'Offline capable class routine app',
-        theme_color: '#020817',
-        background_color: '#020817',
         display: 'standalone',
         start_url: '/',
         id: '/',
