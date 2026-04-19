@@ -644,9 +644,12 @@ export default function Index() {
       {/* Header */}
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-lg font-bold">
-            {role === "student" ? "Vu Routine" : "My Classes"}
-          </h1>
+          <div className="flex items-center gap-2 mb-1">
+            <img src="/logo.png" alt="Vu Routine" className="h-6 w-6 object-contain drop-shadow-sm" />
+            <h1 className="font-heading text-lg font-bold leading-none">
+              {role === "student" ? "Vu Routine" : "My Classes"}
+            </h1>
+          </div>
           <div className="flex flex-col">
             <p className="text-xs text-muted-foreground font-medium">
               {role === "student"
@@ -964,14 +967,14 @@ export default function Index() {
       {/* Room Finder FAB & Dialog */}
       <Dialog open={isRoomFinderOpen} onOpenChange={setIsRoomFinderOpen}>
         <DialogTrigger asChild>
-          <button className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl active:scale-95 z-[99999]">
-            <span className="material-symbols-outlined text-[28px]">search_insights</span>
+          <button className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-card shadow-lg border-2 border-primary/20 transition-all hover:shadow-xl hover:border-primary/50 active:scale-95 z-[99999] overflow-hidden p-2">
+            <img src="/logo.png" alt="Finder" className="h-full w-full object-contain drop-shadow-sm" />
           </button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-heading text-xl font-bold flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-blue-500" />
+              <img src="/logo.png" alt="Logo" className="h-6 w-6 object-contain" />
               Room Finder
             </DialogTitle>
           </DialogHeader>
