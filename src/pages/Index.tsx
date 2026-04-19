@@ -49,11 +49,28 @@ const QUOTES = [
   "And He has found you lost and guided [you]. - Surah Ad-Duha 93:7",
   "Allah does not burden a soul beyond that it can bear. - Surah Al-Baqarah 2:286",
   "So verily, with the hardship, there is relief. - Surah Al-Inshirah 94:5",
-  "The best of you are those who learn the Quran and teach it. - Prophet Muhammad (SAW)",
-  "Whoever follows a path in pursuit of knowledge, Allah will make easy for him a path to Paradise. - Prophet Muhammad (SAW)",
+  "The best of you are those who learn the Quran and teach it. - Prophet Muhammad (SAW) [Sahih Bukhari]",
+  "Whoever follows a path in pursuit of knowledge, Allah will make easy for him a path to Paradise. - Prophet Muhammad (SAW) [Sahih Muslim]",
   "Indeed, Allah is with the patient. - Surah Al-Baqarah 2:153",
   "And rely upon Allah; and sufficient is Allah as Disposer of affairs. - Surah Al-Ahzab 33:3",
-  "My success can only come from Allah. - Surah Hud 11:88"
+  "My success can only come from Allah. - Surah Hud 11:88",
+  "When Allah wishes good for someone, He bestows upon him the understanding of Deen. - Prophet Muhammad (SAW) [Sahih Bukhari]",
+  "Do not lose hope, nor be sad. - Quran 3:139",
+  "Call upon Me; I will respond to you. - Quran 40:60",
+  "Verily, actions are judged by intentions. - Prophet Muhammad (SAW) [Sahih Bukhari & Muslim]",
+  "A kind word is a form of charity. - Prophet Muhammad (SAW) [Sahih Bukhari]",
+  "The strongest among you is the one who controls his anger. - Prophet Muhammad (SAW) [Sahih Bukhari]",
+  "Make things easy for people and do not make them difficult, and cheer people up and do not drive them away. - Prophet Muhammad (SAW) [Sahih Bukhari]",
+  "Righteousness is good character. - Prophet Muhammad (SAW) [Sahih Muslim]",
+  "The best among you are those who have the best manners and character. - Prophet Muhammad (SAW) [Sahih Bukhari]",
+  "And He is with you wherever you are. - Quran 57:4",
+  "Speak good or remain silent. - Prophet Muhammad (SAW) [Sahih Muslim]",
+  "The seeking of knowledge is obligatory for every Muslim. - Prophet Muhammad (SAW) [Sunan Ibn Majah]",
+  "If you are grateful, I will surely increase you. - Quran 14:7",
+  "Take benefit of five before five: your youth before your old age, your health before your sickness, your wealth before your poverty, your free time before you are preoccupied, and your life before your death. - Prophet Muhammad (SAW) [Al-Hakim]",
+  "The most beloved of deeds to Allah are those that are most consistent, even if it is small. - Prophet Muhammad (SAW) [Sahih Bukhari]",
+  "Richness does not lie in the abundance of worldly goods, but true richness is the richness of the soul. - Prophet Muhammad (SAW) [Sahih Bukhari]",
+  "He who does not show mercy to others, will not be shown mercy. - Prophet Muhammad (SAW) [Sahih Bukhari]"
 ];
 
 const getFormattedDate = () => {
@@ -612,14 +629,12 @@ export default function Index() {
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="w-full max-w-sm space-y-6 text-center">
           <div>
-            <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-2xl overflow-hidden">
-              <img src="/logo.png" alt="Vu Routine Logo" className="h-full w-full object-contain" />
+            <div className="mx-auto mb-6 flex items-center justify-center rounded-3xl overflow-hidden p-2">
+              <img src="/logo.png" alt="Vu Routine Logo" className="object-contain" style={{ width: '250px', height: '250px', marginTop: '-7px' }} />
             </div>
-            <h1 className="font-heading text-2xl font-bold">Vu Routine & Finder</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Navigate Your Studies at Vu</p>
           </div>
-          <div className="space-y-3">
-            <p className="text-sm font-medium text-muted-foreground">
+          <div className="space-y-4">
+            <p className="text-xl font-bold tracking-tight text-foreground/90" style={{ marginTop: '-9px', marginBottom: '11px', paddingBottom: '8.5px' }}>
               {role ? "Change your role" : "I am a"}
             </p>
             {isStudent ? (
@@ -644,10 +659,10 @@ export default function Index() {
       {/* Header */}
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <img src="/logo.png" alt="Vu Routine" className="h-6 w-6 object-contain drop-shadow-sm" />
-            <h1 className="font-heading text-lg font-bold leading-none">
-              {role === "student" ? "Vu Routine" : "My Classes"}
+          <div className="flex items-center gap-3 mb-1">
+            <img src="/logo.png" alt="My Routine" style={{ width: '38px', height: '38px' }} className="object-contain drop-shadow-sm" />
+            <h1 className="font-heading font-bold leading-none" style={{ marginTop: '-9px', marginLeft: '-8px', fontSize: '22.75px' }}>
+              {role === "student" ? "My Routine" : "My Classes"}
             </h1>
           </div>
           <div className="flex flex-col">
@@ -967,14 +982,14 @@ export default function Index() {
       {/* Room Finder FAB & Dialog */}
       <Dialog open={isRoomFinderOpen} onOpenChange={setIsRoomFinderOpen}>
         <DialogTrigger asChild>
-          <button className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-card shadow-lg border-2 border-primary/20 transition-all hover:shadow-xl hover:border-primary/50 active:scale-95 z-[99999] overflow-hidden p-2">
-            <img src="/logo.png" alt="Finder" className="h-full w-full object-contain drop-shadow-sm" />
+          <button className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl active:scale-95 z-[99999]">
+            <span className="material-symbols-outlined text-[28px]">search_insights</span>
           </button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-heading text-xl font-bold flex items-center gap-2">
-              <img src="/logo.png" alt="Logo" className="h-6 w-6 object-contain" />
+              <MapPin className="h-5 w-5 text-blue-500" />
               Room Finder
             </DialogTitle>
           </DialogHeader>
