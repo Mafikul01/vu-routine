@@ -756,7 +756,7 @@ export default function Index() {
     const StudentBtn = () => (
       <button
         onClick={() => handleRoleSelect("student")}
-        className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-all hover:shadow-md active:scale-95 ${role === "student" ? "border-green-500 bg-green-50/10" : role ? "border-sky-400 bg-sky-50/10" : "bg-card hover:border-primary"}`}
+        className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-all hover:shadow-md ${role === "student" ? "border-green-500 bg-green-50/10" : role ? "border-sky-400 bg-sky-50/10" : "bg-card hover:border-primary"}`}
       >
         <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${role === "student" ? "bg-green-500/10 text-green-600" : "bg-primary/10 text-primary"}`}>
           <GraduationCap className="h-5 w-5" />
@@ -771,7 +771,7 @@ export default function Index() {
     const TeacherBtn = () => (
       <button
         onClick={() => handleRoleSelect("teacher")}
-        className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-all hover:shadow-md active:scale-95 ${role === "teacher" ? "border-green-500 bg-green-50/10" : role ? "border-sky-400 bg-sky-50/10" : "bg-card hover:border-primary"}`}
+        className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-all hover:shadow-md ${role === "teacher" ? "border-green-500 bg-green-50/10" : role ? "border-sky-400 bg-sky-50/10" : "bg-card hover:border-primary"}`}
       >
         <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${role === "teacher" ? "bg-green-500/10 text-green-600" : "bg-blue-500/10 text-blue-600"}`}>
           <User className="h-5 w-5" />
@@ -784,12 +784,7 @@ export default function Index() {
     );
 
     return (
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 1.02 }}
-        className="flex min-h-screen items-center justify-center p-4"
-      >
+      <div className="flex min-h-screen items-center justify-center p-4">
         <div className="w-full max-w-sm space-y-6 text-center">
           <div>
             <div className="mx-auto mb-6 flex items-center justify-center rounded-2xl overflow-hidden p-2">
@@ -801,27 +796,27 @@ export default function Index() {
               {role ? "Change your role" : "I am a"}
             </p>
             {isStudent ? (
-              <div className="space-y-4">
+              <>
                 <TeacherBtn />
                 <StudentBtn />
-              </div>
+              </>
             ) : (
-              <div className="space-y-4">
+              <>
                 <StudentBtn />
                 <TeacherBtn />
-              </div>
+              </>
             )}
           </div>
         </div>
-      </motion.div>
+      </div>
     );
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-lg p-4 pb-20 relative scroll-smooth overflow-y-auto" id="root" style={{ height: '100dvh', WebkitOverflowScrolling: 'touch' }}>
+    <div className="mx-auto min-h-screen max-w-lg p-4 pb-20 relative">
       {/* Header */}
       <div className="mb-5 flex items-center justify-between relative z-50">
-        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
+        <div>
           <div className="flex items-center gap-3 mb-1">
             <img src="/logo.png" alt="My Routine" style={{ width: '38px', height: '38px' }} className="object-contain drop-shadow-sm" />
             <h1 className="font-heading font-bold leading-none" style={{ marginTop: '-9px', marginLeft: '-8px', fontSize: '22.75px' }}>
@@ -843,12 +838,12 @@ export default function Index() {
               Synced at {lastSynced}
             </p>
           )}
-        </motion.div>
+        </div>
         <div className="flex gap-2 relative" ref={menuRef}>
           <button
             onClick={fetchDynamicRoutine}
             disabled={isSyncing}
-            className={`flex items-center justify-center rounded-lg bg-secondary p-2 transition-all hover:bg-secondary/80 active:scale-90 ${isSyncing ? "animate-spin opacity-50" : ""}`}
+            className={`flex items-center justify-center rounded-lg bg-secondary p-2 transition-all hover:bg-secondary/80 ${isSyncing ? "animate-spin opacity-50" : ""}`}
             title="Refresh from Google Sheet"
           >
             <RefreshCcw className="h-4 w-4 text-secondary-foreground" />
@@ -858,14 +853,14 @@ export default function Index() {
               window.history.pushState({ modal: "changeRole" }, "");
               setIsChangingRole(true);
             }}
-            className="flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground transition-all hover:bg-secondary/80 active:scale-95"
+            className="flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
           >
             <ArrowLeftRight className="h-3.5 w-3.5" />
             Switch
           </button>
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="flex items-center justify-center rounded-lg bg-secondary p-2 transition-all hover:bg-secondary/80 active:scale-90"
+            className="flex items-center justify-center rounded-lg bg-secondary p-2 transition-all hover:bg-secondary/80"
             title="Menu"
           >
             <Menu className="h-4 w-4 text-secondary-foreground" />
@@ -1114,30 +1109,20 @@ export default function Index() {
       </div>
 
       {/* Classes list */}
-      <div className="space-y-3" style={{ willChange: 'transform, opacity' }}>
+      <div className="space-y-3">
         {classes.length > 0 ? (
-          <AnimatePresence mode="popLayout" initial={false}>
-            {classes.map((entry, i) => (
-              <motion.div 
-                key={`${entry.course}-${entry.slot}-${entry.section}-${i}`}
-                layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2, delay: i < 5 ? i * 0.05 : 0 }}
-                onClick={() => setSelectedEntry(entry)}
-                className="cursor-pointer transition-transform active:scale-[0.98]"
-              >
-                <ClassCard entry={entry} showSection={role !== "student"} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
+          classes.map((entry, i) => (
+            <div 
+              key={`${entry.course}-${entry.slot}-${entry.section}-${i}`} 
+              style={{ animationDelay: `${i * 50}ms` }}
+              onClick={() => setSelectedEntry(entry)}
+              className="cursor-pointer transition-transform active:scale-[0.98]"
+            >
+              <ClassCard entry={entry} showSection={role !== "student"} />
+            </div>
+          ))
         ) : (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="relative mb-8 mt-5 overflow-hidden rounded-2xl border bg-card p-8 text-center shadow-sm"
-          >
+          <div className="relative mb-8 mt-5 overflow-hidden rounded-2xl border bg-card p-8 text-center shadow-sm">
             {/* Soft material-style graphic background */}
             <div className="absolute inset-0 pointer-events-none opacity-5 dark:opacity-10">
               <div className="absolute -left-10 -top-10 h-40 w-40 rounded-full bg-primary blur-3xl" />
@@ -1152,12 +1137,12 @@ export default function Index() {
             </p>
             <button 
               onClick={() => setCurrentQuoteIndex((prev) => (prev + 1) % QUOTES.length)}
-              className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-xs font-semibold text-primary transition-all hover:bg-primary/20 active:scale-90"
+              className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-xs font-semibold text-primary transition-all hover:bg-primary/20"
             >
               <RefreshCcw className="h-3 w-3" />
               Show More Quotes
             </button>
-          </motion.div>
+          </div>
         )}
       </div>
 
