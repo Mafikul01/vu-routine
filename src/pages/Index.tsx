@@ -750,7 +750,7 @@ export default function Index() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-lg p-4 pb-20 relative" style={{ touchAction: 'pan-y' }}>
+    <div className="mx-auto min-h-screen max-w-lg p-4 pb-20 relative">
       {/* Header */}
       <div className="mb-5 flex items-center justify-between relative z-50">
         <div>
