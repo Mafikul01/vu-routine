@@ -621,6 +621,7 @@ export default function Index() {
       await updateDoc(doc(db, "settings", "global"), {
         busSchedule: newBusSchedule
       });
+      setAdminSettings(prev => ({ ...prev, busSchedule: newBusSchedule }));
       toast.success("Bus Schedule Updated");
       setIsEditingBusSchedule(false);
     } catch (e) {
@@ -1616,8 +1617,8 @@ export default function Index() {
       <Dialog open={isBusScheduleOpen} onOpenChange={setIsBusScheduleOpen}>
         <DialogContent className="sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col p-0">
           <DialogHeader className="p-6 pb-2">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="font-heading text-xl font-bold flex items-center gap-2">
+            <div className="flex items-center justify-between pr-8">
+              <DialogTitle className="font-heading text-xl font-bold flex items-center gap-2 mt-1">
                 <Bus className="h-5 w-5 text-indigo-500" />
                 Bus Schedule
               </DialogTitle>
