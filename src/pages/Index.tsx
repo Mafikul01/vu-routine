@@ -1077,7 +1077,7 @@ export default function Index() {
                 <Bell className="h-5 w-5 text-primary shrink-0 mt-0.5" />
               )}
               <div className="flex-1 overflow-hidden">
-                <p className={`text-sm font-semibold leading-relaxed ${notice.type === "important" ? "text-red-900 dark:text-red-200" : "text-foreground"}`}>
+                <p className={`text-sm font-semibold leading-relaxed whitespace-pre-wrap ${notice.type === "important" ? "text-red-900 dark:text-red-200" : "text-foreground"}`}>
                   {notice.text}
                 </p>
                 {notice.type === "normal" && (
@@ -1643,15 +1643,15 @@ export default function Index() {
                   <table className="w-full text-sm text-left">
                     <thead className="bg-secondary/50 text-xs text-muted-foreground uppercase tracking-wider">
                       <tr>
-                        <th className="py-3 px-4 font-semibold border-b">Trip</th>
+                        <th className="py-3 px-4 font-semibold border-b"></th>
                         <th className="py-3 px-4 font-semibold border-b">From University</th>
-                        <th className="py-3 px-4 font-semibold border-b">From City (Bheripara Mor)</th>
+                        <th className="py-3 px-4 font-semibold border-b">From City (Court Station / Veripara Mor)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y text-sm">
                       {(adminSettings.busSchedule || []).map((trip, idx) => (
                         <tr key={idx} className="hover:bg-muted/50 transition-colors">
-                          <td className="py-3 px-4 font-medium">{trip.trip}</td>
+                          <td className="py-3 px-4 font-medium whitespace-nowrap">Trip - {trip.trip.replace(/^Trip\s*-?\s*/i, '').trim()}</td>
                           <td className={`py-3 px-4 ${trip.fromUniversity === '-' || !trip.fromUniversity ? 'text-muted-foreground text-center' : 'font-bold text-emerald-600 dark:text-emerald-400'}`}>
                             {trip.fromUniversity || '-'}
                           </td>
@@ -1673,7 +1673,7 @@ export default function Index() {
                 {newBusSchedule.map((trip, idx) => (
                   <div key={idx} className="flex flex-col gap-2 p-3 bg-card border rounded-xl">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-bold text-muted-foreground uppercase">{trip.trip}</p>
+                      <p className="text-xs font-bold text-muted-foreground uppercase">Trip - {trip.trip.replace(/^Trip\s*-?\s*/i, '').trim()}</p>
                       <button 
                          onClick={() => {
                            const updated = [...newBusSchedule];
