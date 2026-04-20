@@ -17,7 +17,7 @@ import {
   ClassEntry,
   routineData as staticRoutineData,
 } from "@/data/routineData";
-import { GraduationCap, User, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, Code, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote, FileText } from "lucide-react";
+import { GraduationCap, User, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, Code, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote, FileText, Bus, Edit2, Save } from "lucide-react";
 import { useTheme } from "@/components/ThemeContext";
 import { toast } from "@/components/ui/sonner";
 import { motion, AnimatePresence } from "motion/react";
@@ -88,6 +88,19 @@ const getFormattedDate = () => {
   const year = date.getFullYear();
   return `${day}-${month}-${year}`;
 };
+
+export interface BusTrip {
+  trip: string;
+  fromUniversity: string;
+  fromCity: string;
+}
+
+const DEFAULT_BUS_SCHEDULE: BusTrip[] = [
+  { trip: "Trip 1", fromUniversity: "-", fromCity: "08:10 AM" },
+  { trip: "Trip 2", fromUniversity: "-", fromCity: "09:20 AM" },
+  { trip: "Trip 3", fromUniversity: "12:25 PM", fromCity: "01:10 PM" },
+  { trip: "Trip 4", fromUniversity: "04:15 PM", fromCity: "-" }
+];
 
 export default function Index() {
   const { theme, setTheme } = useTheme();
@@ -162,6 +175,8 @@ export default function Index() {
   const [isTeacherDirOpen, setIsTeacherDirOpen] = useState(false);
   const [isDevInfoOpen, setIsDevInfoOpen] = useState(false);
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
+  const [isBusScheduleOpen, setIsBusScheduleOpen] = useState(false);
+  const [isEditingBusSchedule, setIsEditingBusSchedule] = useState(false);
   const [localToast, setLocalToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [toastSwipeOffset, setToastSwipeOffset] = useState({ x: 0, y: 0 });
   const [dirSearchTerm, setDirSearchTerm] = useState("");
@@ -177,14 +192,16 @@ export default function Index() {
     semesterGids?: Record<string, string>,
     githubUsername?: string,
     devProfileImage?: string,
-    adminEmails?: string[]
+    adminEmails?: string[],
+    busSchedule?: BusTrip[]
   }>({ 
     mainSheetUrl: DEFAULT_SHEET, 
     infoGid: INFO_GID,
     semesterGids: SEMESTER_GIDS,
     githubUsername: "mafikul01",
     devProfileImage: "",
-    adminEmails: ["mafikulmovie@gmail.com"]
+    adminEmails: ["mafikulmovie@gmail.com"],
+    busSchedule: DEFAULT_BUS_SCHEDULE
   });
 
   // Notice Dismissal state
@@ -198,6 +215,7 @@ export default function Index() {
   const [newGithubUsername, setNewGithubUsername] = useState("");
   const [newProfileImage, setNewProfileImage] = useState("");
   const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [newBusSchedule, setNewBusSchedule] = useState<BusTrip[]>(DEFAULT_BUS_SCHEDULE);
 
   const fetchDynamicRoutine = useCallback(async () => {
     setIsSyncing(true);
@@ -333,7 +351,7 @@ export default function Index() {
   const [devLinkedin, setDevLinkedin] = useState("");
   const [devWhatsapp, setDevWhatsapp] = useState("");
 
-  const isAnyDialogOpen = !!selectedEntry || isRoomFinderOpen || isTeacherDirOpen || isDevInfoOpen || isAdminDialogOpen || isMenuOpen;
+  const isAnyDialogOpen = !!selectedEntry || isRoomFinderOpen || isBusScheduleOpen || isTeacherDirOpen || isDevInfoOpen || isAdminDialogOpen || isMenuOpen;
   const wasAnyDialogOpenRef = useRef(false);
 
   useEffect(() => {
@@ -396,6 +414,8 @@ export default function Index() {
       if (wasAnyDialogOpenRef.current) {
         setSelectedEntry(null);
         setIsRoomFinderOpen(false);
+        setIsBusScheduleOpen(false);
+        setIsEditingBusSchedule(false);
         setIsTeacherDirOpen(false);
         setIsDevInfoOpen(false);
         setIsAdminDialogOpen(false);
@@ -521,6 +541,7 @@ export default function Index() {
           devFacebook?: string;
           devLinkedin?: string;
           devWhatsapp?: string;
+          busSchedule?: BusTrip[];
         };
         setAdminSettings(prev => ({ ...prev, ...data }));
         setNewMainSheetUrl(data.mainSheetUrl);
@@ -532,6 +553,7 @@ export default function Index() {
         setDevFacebook(data.devFacebook || "mafikul01");
         setDevLinkedin(data.devLinkedin || "mafikul01");
         setDevWhatsapp(data.devWhatsapp || "01788302771");
+        setNewBusSchedule(data.busSchedule || DEFAULT_BUS_SCHEDULE);
       }
     });
 
@@ -594,6 +616,18 @@ export default function Index() {
     }
   };
 
+  const saveBusSchedule = async () => {
+    try {
+      await updateDoc(doc(db, "settings", "global"), {
+        busSchedule: newBusSchedule
+      });
+      toast.success("Bus Schedule Updated");
+      setIsEditingBusSchedule(false);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, "settings/global");
+    }
+  };
+
   const updateSettings = async () => {
     try {
       await setDoc(doc(db, "settings", "global"), {
@@ -606,7 +640,8 @@ export default function Index() {
         devStudentId,
         devFacebook,
         devLinkedin,
-        devWhatsapp
+        devWhatsapp,
+        busSchedule: newBusSchedule
       });
       toast.success("Settings Saved");
     } catch (e) {
@@ -917,6 +952,16 @@ export default function Index() {
           {/* Dropdown Menu */}
           {isMenuOpen && (
             <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border bg-card p-1 shadow-lg z-50 animate-fade-in">
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  setIsBusScheduleOpen(true);
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
+              >
+                <Bus className="h-4 w-4" />
+                Bus Schedule
+              </button>
               <button
                 onClick={() => {
                   setIsMenuOpen(false);
@@ -1566,6 +1611,152 @@ export default function Index() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Bus Schedule Dialog */}
+      <Dialog open={isBusScheduleOpen} onOpenChange={setIsBusScheduleOpen}>
+        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="p-6 pb-2">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="font-heading text-xl font-bold flex items-center gap-2">
+                <Bus className="h-5 w-5 text-indigo-500" />
+                Bus Schedule
+              </DialogTitle>
+              {isAdmin && !isEditingBusSchedule && (
+                <button 
+                  onClick={() => setIsEditingBusSchedule(true)} 
+                  className="flex items-center gap-1.5 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-full transition-colors"
+                >
+                  <Edit2 className="h-3.5 w-3.5" />
+                  Edit
+                </button>
+              )}
+            </div>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto px-6 pb-6">
+            {!isEditingBusSchedule ? (
+              <>
+                <p className="text-xs text-muted-foreground mb-4 text-center bg-secondary/50 py-1.5 rounded-full inline-block px-4 mx-auto w-fit block">
+                  Effective from April 15, 2026
+                </p>
+                
+                <div className="rounded-xl border overflow-hidden">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-secondary/50 text-xs text-muted-foreground uppercase tracking-wider">
+                      <tr>
+                        <th className="py-3 px-4 font-semibold border-b">Trip</th>
+                        <th className="py-3 px-4 font-semibold border-b">From University</th>
+                        <th className="py-3 px-4 font-semibold border-b">From City (Bheripara Mor)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y text-sm">
+                      {(adminSettings.busSchedule || []).map((trip, idx) => (
+                        <tr key={idx} className="hover:bg-muted/50 transition-colors">
+                          <td className="py-3 px-4 font-medium">{trip.trip}</td>
+                          <td className={`py-3 px-4 ${trip.fromUniversity === '-' || !trip.fromUniversity ? 'text-muted-foreground text-center' : 'font-bold text-emerald-600 dark:text-emerald-400'}`}>
+                            {trip.fromUniversity || '-'}
+                          </td>
+                          <td className={`py-3 px-4 ${trip.fromCity === '-' || !trip.fromCity ? 'text-muted-foreground text-center' : 'font-bold text-indigo-600 dark:text-indigo-400'}`}>
+                            {trip.fromCity || '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-4 p-3 rounded-lg bg-orange-50 dark:bg-orange-950/20 text-orange-800 dark:text-orange-200 border border-orange-100 dark:border-orange-900/50 flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <p className="text-xs">Schedule is subject to change. Please confirm with university transport for the most up-to-date timings.</p>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-4 pt-2 animate-fade-in">
+                {newBusSchedule.map((trip, idx) => (
+                  <div key={idx} className="flex flex-col gap-2 p-3 bg-card border rounded-xl">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold text-muted-foreground uppercase">{trip.trip}</p>
+                      <button 
+                         onClick={() => {
+                           const updated = [...newBusSchedule];
+                           updated.splice(idx, 1);
+                           setNewBusSchedule(updated);
+                         }}
+                         className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 p-1 rounded-md transition-colors"
+                      >
+                         <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                       <div>
+                         <label className="text-[10px] uppercase font-bold text-muted-foreground mb-1 block">Trip Name</label>
+                         <input 
+                           value={trip.trip}
+                           onChange={(e) => {
+                             const updated = [...newBusSchedule];
+                             updated[idx].trip = e.target.value;
+                             setNewBusSchedule(updated);
+                           }}
+                           className="w-full rounded-lg border bg-background p-1.5 text-xs outline-none focus:border-primary"
+                         />
+                       </div>
+                       <div></div>
+                       <div>
+                         <label className="text-[10px] uppercase font-bold text-muted-foreground mb-1 block">From Varsity</label>
+                         <input 
+                           value={trip.fromUniversity}
+                           onChange={(e) => {
+                             const updated = [...newBusSchedule];
+                             updated[idx].fromUniversity = e.target.value;
+                             setNewBusSchedule(updated);
+                           }}
+                           className="w-full rounded-lg border bg-background p-1.5 text-xs outline-none focus:border-primary"
+                         />
+                       </div>
+                       <div>
+                         <label className="text-[10px] uppercase font-bold text-muted-foreground mb-1 block">From City</label>
+                         <input 
+                           value={trip.fromCity}
+                           onChange={(e) => {
+                             const updated = [...newBusSchedule];
+                             updated[idx].fromCity = e.target.value;
+                             setNewBusSchedule(updated);
+                           }}
+                           className="w-full rounded-lg border bg-background p-1.5 text-xs outline-none focus:border-primary"
+                         />
+                       </div>
+                    </div>
+                  </div>
+                ))}
+                
+                <div className="flex justify-center flex-col gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                      setNewBusSchedule([...newBusSchedule, { trip: `Trip ${newBusSchedule.length + 1}`, fromUniversity: "-", fromCity: "-" }]);
+                    }}
+                    className="w-full rounded-xl border border-dashed border-primary/50 text-primary py-2.5 text-sm font-bold hover:bg-primary/5 transition-colors"
+                  >
+                    + Add Trip
+                  </button>
+                  <div className="flex gap-2 w-full">
+                    <button
+                      onClick={() => setIsEditingBusSchedule(false)}
+                      className="flex-1 rounded-xl bg-secondary py-2.5 text-sm font-bold text-secondary-foreground shadow-sm transition-all hover:bg-secondary/80 active:scale-[0.98]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={saveBusSchedule}
+                      className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold flex items-center justify-center gap-2 text-primary-foreground shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
+                    >
+                      <Save className="h-4 w-4" />
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Developer Info Dialog */}
       <Dialog open={isDevInfoOpen} onOpenChange={setIsDevInfoOpen}>

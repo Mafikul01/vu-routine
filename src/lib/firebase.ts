@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { 
   getFirestore, 
+  initializeFirestore,
   doc, 
   getDoc, 
   getDocFromServer, 
@@ -45,7 +46,9 @@ interface FirestoreErrorInfo {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+}, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
@@ -78,8 +81,10 @@ async function testConnection() {
     // Attempting to get a non-existent doc from server to verify connection
     await getDocFromServer(doc(db, 'test', 'connection'));
   } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration. The client is offline.");
+    if (error instanceof Error) {
+      if (error.message.includes('the client is offline') || error.message.includes('unavailable')) {
+        console.warn("Firebase client is currently offline or unavailable. Operating in offline mode.");
+      }
     }
   }
 }
