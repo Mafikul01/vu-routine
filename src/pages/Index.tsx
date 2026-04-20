@@ -151,6 +151,7 @@ export default function Index() {
 
   const [pullY, setPullY] = useState(0);
   const [isPulling, setIsPulling] = useState(false);
+  const [isPullRefreshing, setIsPullRefreshing] = useState(false);
   const startTouchY = useRef(0);
   const pullThreshold = 70;
   const isAtTop = useRef(true);
@@ -322,6 +323,7 @@ export default function Index() {
       toast.error("Sync failed. Check network connection.");
     } finally {
       setIsSyncing(false);
+      setIsPullRefreshing(false);
     }
   }, [adminSettings.infoGid, adminSettings.mainSheetUrl, adminSettings.semesterGids, semester]);
 
@@ -428,6 +430,13 @@ export default function Index() {
     };
 
     const handleTouchStart = (e: TouchEvent) => {
+      // Ignore edge swipe gestures for navigation (e.g., within 40px of left/right screen edge)
+      const touchX = e.touches[0].clientX;
+      if (touchX < 40 || touchX > window.innerWidth - 40) {
+        startTouchY.current = -1;
+        return;
+      }
+      
       if (isAtTop.current) {
         startTouchY.current = e.touches[0].clientY;
       } else {
@@ -439,12 +448,16 @@ export default function Index() {
       if (startTouchY.current === -1 || !isAtTop.current || isSyncing) return;
       
       const currentTouchY = e.touches[0].clientY;
-      const diff = currentTouchY - startTouchY.current;
+      let diff = currentTouchY - startTouchY.current;
       
       if (diff > 0) {
-        // Apply resistance
+        // Apply resistance, cap pulling
         const dampened = Math.pow(diff, 0.85);
-        setPullY(dampened);
+        if (dampened > 150) {
+            setPullY(150 + (dampened - 150) * 0.2);
+        } else {
+            setPullY(dampened);
+        }
         setIsPulling(true);
         if (dampened > 5) {
           if (e.cancelable) e.preventDefault();
@@ -457,6 +470,7 @@ export default function Index() {
 
     const handleTouchEnd = () => {
       if (pullY > pullThreshold && !isSyncing) {
+        setIsPullRefreshing(true);
         fetchDynamicRoutine();
       }
       setPullY(0);
@@ -815,11 +829,38 @@ export default function Index() {
   return (
     <>
       <div 
-        className="mx-auto min-h-screen max-w-lg p-4 pb-20 relative"
+        className="w-full flex flex-col items-center justify-end overflow-hidden pointer-events-none"
         style={{ 
-          marginTop: `${pullY}px`,
-          transition: isPulling ? 'none' : 'margin-top 0.4s cubic-bezier(0.19, 1, 0.22, 1)'
+          height: isPullRefreshing ? '80px' : `${pullY}px`,
+          transition: isPulling ? 'none' : 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
         }}
+      >
+        <div 
+          className="flex flex-col items-center justify-end pb-4 space-y-2" 
+          style={{
+            opacity: isPullRefreshing ? 1 : Math.min(1, pullY / (pullThreshold * 0.8)),
+            transition: isPulling ? 'none' : 'opacity 0.3s ease'
+          }}
+        >
+          {pullY >= pullThreshold && !isPullRefreshing && (
+             <span className="text-[10px] text-muted-foreground font-bold tracking-wider uppercase animate-fade-in">Release to refresh</span>
+          )}
+          {isPullRefreshing && (
+             <span className="text-[10px] text-primary font-bold tracking-wider uppercase animate-fade-in">Refreshing...</span>
+          )}
+          <div className="flex items-center justify-center text-primary" style={{ width: '28px', height: '28px' }}>
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" fill="none" className="opacity-20" />
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" fill="none"
+                        strokeDasharray="62.8"
+                        strokeDashoffset={isPullRefreshing ? 0 : 62.8 * (1 - Math.min(1, pullY / pullThreshold))}
+                        strokeLinecap="round" />
+              </svg>
+          </div>
+        </div>
+      </div>
+      <div 
+        className="mx-auto min-h-screen max-w-lg p-4 pb-20 relative"
       >
       {/* Header */}
       <div className="mb-5 flex items-center justify-between relative z-50">
