@@ -1455,7 +1455,16 @@ export default function Index() {
                 </div>
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Semester & Section</p>
-                  <p className="text-sm font-semibold">{selectedEntry.semester}th Sem, Sec {selectedEntry.section}</p>
+                  <p className="text-sm font-semibold">
+                    {(() => {
+                      const n = Number(selectedEntry.semester);
+                      let suffix = "th";
+                      if (n === 1) suffix = "st";
+                      else if (n === 2) suffix = "nd";
+                      else if (n === 3) suffix = "rd";
+                      return `${n}${suffix}`;
+                    })()} - {selectedEntry.section}
+                  </p>
                 </div>
               </div>
 

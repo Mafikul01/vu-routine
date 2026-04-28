@@ -18,6 +18,13 @@ export function ClassCard({ entry, showSection = false }: ClassCardProps) {
   const slotInfo = SLOTS.find(s => s.slot === entry.slot);
   const displayStartTime = entry.startTime || entry.slotTime || slotInfo?.start;
   const displayEndTime = entry.endTime || slotInfo?.end;
+
+  const getOrdinal = (n: number) => {
+    if (n === 1) return "1st";
+    if (n === 2) return "2nd";
+    if (n === 3) return "3rd";
+    return `${n}th`;
+  };
   
   return (
     <div
@@ -33,13 +40,13 @@ export function ClassCard({ entry, showSection = false }: ClassCardProps) {
           <h3 className="font-heading font-bold text-base leading-tight text-foreground mt-2">
             {entry.course}
             {showSection && (
-              <span className="ml-2 text-xs font-normal text-muted-foreground bg-secondary/50 px-2 py-0.5 rounded">
-                Sec {entry.section}
+              <span className="ml-2 text-[10px] font-bold text-muted-foreground bg-secondary/80 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                {getOrdinal(Number(entry.semester))} - {entry.section}
               </span>
             )}
             {entry.semester && !showSection && (
               <span className="ml-2 text-xs font-normal text-muted-foreground uppercase">
-                {entry.semester}th Sem
+                {getOrdinal(Number(entry.semester))} Sem
               </span>
             )}
           </h3>

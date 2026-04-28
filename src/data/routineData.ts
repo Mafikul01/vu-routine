@@ -14,12 +14,12 @@ export interface ClassEntry {
 export const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
 
 export const SLOTS = [
-  { slot: 1, start: "09:00 AM", end: "10:00 AM" },
-  { slot: 2, start: "10:05 AM", end: "11:05 AM" },
-  { slot: 3, start: "11:10 AM", end: "12:10 PM" },
-  { slot: 4, start: "12:15 PM", end: "01:15 PM" },
-  { slot: 5, start: "01:50 PM", end: "02:50 PM" },
-  { slot: 6, start: "02:55 PM", end: "03:55 PM" },
+  { slot: 1, start: "09:00 AM", end: "10:05 AM" },
+  { slot: 2, start: "10:05 AM", end: "11:10 AM" },
+  { slot: 3, start: "11:10 AM", end: "12:15 PM" },
+  { slot: 4, start: "12:15 PM", end: "01:20 PM" },
+  { slot: 5, start: "01:50 PM", end: "02:55 PM" },
+  { slot: 6, start: "02:55 PM", end: "04:00 PM" },
 ] as const;
 
 export const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
