@@ -1,5 +1,7 @@
-*.png binary
-*.jpg binary
-*.jpeg binary
-*.gif binary
-*.ico binary
+*.png binary -delta -diff -merge -text
+*.jpg binary -delta -diff -merge -text
+*.jpeg binary -delta -diff -merge -text
+*.gif binary -delta -diff -merge -text
+*.ico binary -delta -diff -merge -text
+*.webp binary -delta -diff -merge -text
+*.svg -text border=0

@@ -910,7 +910,14 @@ export default function Index() {
           <div className="flex flex-col">
             <p className="text-xs text-muted-foreground font-medium">
               {role === "student"
-                ? `${semester}${semester === 1 ? "st" : semester === 2 ? "nd" : semester === 3 ? "rd" : "th"} Semester • Section ${section}`
+                ? `${(() => {
+                    const n = Number(semester);
+                    let s = "th";
+                    if (n === 1) s = "st";
+                    else if (n === 2) s = "nd";
+                    else if (n === 3) s = "rd";
+                    return `${n}${s}`;
+                  })()} - ${section}`
                 : cleanTeacherName(selectedTeacher)}
             </p>
             <p className="text-[11px] text-muted-foreground/70 font-bold tracking-wide">
@@ -1399,7 +1406,14 @@ export default function Index() {
                                     <span className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5" /> NOT AVAILABLE
                                   </span>
                                   <span className="text-[10px] text-muted-foreground truncate" title={`${occupyingClass.course} (${occupyingClass.section})`}>
-                                    {occupyingClass.course} (Sem {occupyingClass.semester}, Sec {occupyingClass.section})
+                                    {occupyingClass.course} ({(() => {
+                                      const n = Number(occupyingClass.semester);
+                                      let s = "th";
+                                      if (n === 1) s = "st";
+                                      else if (n === 2) s = "nd";
+                                      else if (n === 3) s = "rd";
+                                      return `${n}${s}`;
+                                    })()} - {occupyingClass.section})
                                   </span>
                                 </div>
                               )}
@@ -1791,7 +1805,7 @@ export default function Index() {
             <div className="text-center space-y-1.5">
               <h3 className="font-heading text-2xl font-bold">{adminSettings.devName || "Mafikul Islam"}</h3>
               <p className="text-sm font-medium text-primary">Student ID: {adminSettings.devStudentId || "232311070"}</p>
-              <p className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">6th Semester • Section B</p>
+              <p className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">3rd - B</p>
               <p className="text-xs text-muted-foreground pt-2">
                 Developer & Maintainer of the CSE Class Routine App
               </p>
