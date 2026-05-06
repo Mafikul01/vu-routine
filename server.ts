@@ -79,7 +79,7 @@ async function startServer() {
       const { model, contents, systemInstruction } = req.body;
 
       const response = await ai.models.generateContent({
-        model: model || 'gemini-3-flash-preview',
+        model: model || 'gemini-1.5-flash',
         contents,
         config: {
           systemInstruction,
@@ -87,9 +87,10 @@ async function startServer() {
       });
 
       res.json({ text: response.text });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Gemini Proxy Error:", error);
-      res.status(500).json({ error: error.message || "Failed to generate content" });
+      const message = error instanceof Error ? error.message : "Failed to generate content";
+      res.status(500).json({ error: message });
     }
   });
 

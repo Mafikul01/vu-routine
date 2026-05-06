@@ -12,10 +12,10 @@ interface Message {
 }
 
 interface AiAssistantProps {
-  routineData: any;
+  routineData: unknown;
   semester: number;
   section: string;
-  teacherInfo?: any[];
+  teacherInfo?: unknown[];
 }
 
 export function AiAssistant({ routineData, semester, section, teacherInfo }: AiAssistantProps) {
@@ -94,20 +94,12 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
     setIsLoading(true);
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error("Gemini API key is not configured.");
-      }
+      const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
-      const ai = new GoogleGenAI({ apiKey });
-      
       const systemInstruction = `You are Mr. Mendak, a helpful university AI assistant for the VU Routine App.
 Your task is to help students analyze their class routine, find free rooms, and check teacher availability.
-You will be provided with the current routine data in JSON format for the relevant semester.
-Use the provided JSON data to answer the student's questions accurately.
-Be concise, friendly, and helpful.
-Do NOT use Markdown formatting (like **, _, #) in your responses. Use plain text formatting only.
-Return exact time for slots when appropriate, based on this mapping:
+Current user context: Semester ${semester}, Section ${section}.
+Return exact time for slots:
 Slot 1: 09:00 AM - 10:00 AM
 Slot 2: 10:05 AM - 11:05 AM
 Slot 3: 11:10 AM - 12:10 PM
@@ -115,26 +107,33 @@ Slot 4: 12:15 PM - 01:15 PM
 Slot 5: 01:50 PM - 02:50 PM
 Slot 6: 02:55 PM - 03:55 PM
 
-Current user context: Semester ${semester}, Section ${section}.
-If asked who created you, say you were created by Mafikul Islam.
+Routine Data:
+${routineData ? JSON.stringify(routineData).substring(0, 15000) : "N/A"}
 
-Here is the current routine context:
-${routineData ? JSON.stringify(routineData).substring(0, 50000) : "No routine data provided by user."}
+Teacher Info:
+${teacherInfo ? JSON.stringify(teacherInfo).substring(0, 10000) : "N/A"}
 
-Here is the teacher directory context (includes names, initials, phone numbers, designations):
-${teacherInfo ? JSON.stringify(teacherInfo).substring(0, 50000) : "No teacher directory data available."}
+Instructions:
+- Be concise.
+- Use plain text (no markdown like ** or #).
+- Created by Mafikul Islam.
 `;
 
+      setMessages([...currentMessages, { role: 'model', content: '' }]);
+      let fullContent = '';
+
+      if (!geminiKey) {
+        throw new Error("Gemini API key is not configured in Settings.");
+      }
+
+      const ai = new GoogleGenAI({ apiKey: geminiKey });
       const contents = currentMessages.map(msg => ({
         role: msg.role === 'user' ? 'user' : 'model',
         parts: [{ text: msg.content }]
       }));
 
-      // Start with an empty model message for streaming
-      setMessages([...currentMessages, { role: 'model', content: '' }]);
-
       const responseStream = await ai.models.generateContentStream({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-1.5-flash',
         contents,
         config: {
           systemInstruction,
@@ -142,7 +141,6 @@ ${teacherInfo ? JSON.stringify(teacherInfo).substring(0, 50000) : "No teacher di
         }
       });
 
-      let fullContent = '';
       for await (const chunk of responseStream) {
         const text = chunk.text;
         if (text) {
@@ -156,9 +154,10 @@ ${teacherInfo ? JSON.stringify(teacherInfo).substring(0, 50000) : "No teacher di
           });
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err.message || "Could not connect to AI Assistant");
+      const errorMessage = err instanceof Error ? err.message : "Could not connect to AI Assistant";
+      toast.error(errorMessage);
       setMessages(prev => [
         ...prev, 
         { role: 'model', content: "Sorry, I'm having trouble right now. This model might be experiencing high demand. Please try again in a moment." }

@@ -469,7 +469,7 @@ export default function Index() {
       if (startTouchY.current === -1 || !isAtTop.current || isSyncing) return;
       
       const currentTouchY = e.touches[0].clientY;
-      let diff = currentTouchY - startTouchY.current;
+      const diff = currentTouchY - startTouchY.current;
       
       if (diff > 0) {
         // Apply resistance, cap pulling

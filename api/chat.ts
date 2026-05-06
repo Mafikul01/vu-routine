@@ -1,6 +1,7 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI } from '@google/genai';
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -16,7 +17,7 @@ export default async function handler(req: any, res: any) {
     const { model, contents, systemInstruction } = req.body;
 
     const response = await ai.models.generateContent({
-      model: model || 'gemini-3-flash-preview',
+      model: model || 'gemini-1.5-flash',
       contents,
       config: {
         systemInstruction,
@@ -24,8 +25,9 @@ export default async function handler(req: any, res: any) {
     });
 
     res.status(200).json({ text: response.text });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Gemini Serverless Error:", error);
-    res.status(500).json({ error: error.message || "Failed to generate content" });
+    const message = error instanceof Error ? error.message : "Failed to generate content";
+    res.status(500).json({ error: message });
   }
 }
