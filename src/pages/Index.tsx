@@ -2103,7 +2103,7 @@ export default function Index() {
       </Dialog>
     </div>
     {/* Floating AI Assistant Widget */}
-    <AiAssistant routineData={currentRoutine} semester={semester} section={section} />
+    <AiAssistant routineData={currentRoutine} semester={semester} section={section} teacherInfo={teacherInfo} />
     </>
   );
 }

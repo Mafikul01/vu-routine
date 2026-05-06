@@ -19,9 +19,10 @@ interface AiAssistantProps {
   routineData: any;
   semester: number;
   section: string;
+  teacherInfo?: any[];
 }
 
-export function AiAssistant({ routineData, semester, section }: AiAssistantProps) {
+export function AiAssistant({ routineData, semester, section, teacherInfo }: AiAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { role: 'model', content: "Hi! I'm Mr. Mendak 🐸. I can help you find free rooms, check teacher schedules, or summarize your classes. What do you need to know?" }
@@ -106,6 +107,9 @@ If asked who created you, say you were created by Mafikul Islam.
 
 Here is the current routine context:
 ${routineData ? JSON.stringify(routineData).substring(0, 50000) : "No routine data provided by user."}
+
+Here is the teacher directory context (includes names, initials, phone numbers, designations):
+${teacherInfo ? JSON.stringify(teacherInfo).substring(0, 50000) : "No teacher directory data available."}
 `;
 
       const contents = newMessages.map(msg => ({
@@ -114,7 +118,7 @@ ${routineData ? JSON.stringify(routineData).substring(0, 50000) : "No routine da
       }));
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash",
         contents,
         config: {
           systemInstruction,
