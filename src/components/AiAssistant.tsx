@@ -192,7 +192,7 @@ Instructions:
         body: JSON.stringify({
           contents,
           systemInstruction,
-          model: 'gemini-1.5-flash'
+          model: 'gemini-3-flash-preview'
         })
       });
 
@@ -293,8 +293,8 @@ Instructions:
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="fixed bottom-4 right-4 sm:bottom-24 sm:right-5 w-[calc(100vw-32px)] sm:w-[380px] bg-background border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[50] p-0"
             style={{ 
-              maxHeight: 'calc(100dvh - 120px)', 
-              height: 'min(550px, calc(100dvh - 140px))',
+              maxHeight: 'calc(100dvh - 160px)', 
+              height: 'min(500px, calc(100dvh - 180px))',
               top: 'auto',
               bottom: 'max(16px, env(safe-area-inset-bottom))'
             }}
@@ -335,7 +335,7 @@ Instructions:
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-[85%] rounded-2xl px-4 py-2 text-[13px] whitespace-pre-wrap ${
+                      className={`max-w-[85%] rounded-2xl px-4 py-2 text-xs whitespace-pre-wrap ${
                         msg.role === 'user'
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-muted border border-border text-foreground'
