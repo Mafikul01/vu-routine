@@ -4,6 +4,7 @@ import { Bot, X, Send, Loader2, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
+import { GoogleGenAI } from "@google/genai";
 
 interface Message {
   role: 'user' | 'model';
@@ -83,16 +84,23 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
   }, [isOpen]);
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
     
     // Add user message
     const userMsg: Message = { role: 'user', content: input.trim() };
-    const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
+    const currentMessages = [...messages, userMsg];
+    setMessages(currentMessages);
     setInput('');
     setIsLoading(true);
 
     try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("Gemini API key is not configured.");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      
       const systemInstruction = `You are Mr. Mendak, a helpful university AI assistant for the VU Routine App.
 Your task is to help students analyze their class routine, find free rooms, and check teacher availability.
 You will be provided with the current routine data in JSON format for the relevant semester.
@@ -117,35 +125,44 @@ Here is the teacher directory context (includes names, initials, phone numbers, 
 ${teacherInfo ? JSON.stringify(teacherInfo).substring(0, 50000) : "No teacher directory data available."}
 `;
 
-      const contents = newMessages.map(msg => ({
+      const contents = currentMessages.map(msg => ({
         role: msg.role === 'user' ? 'user' : 'model',
         parts: [{ text: msg.content }]
       }));
 
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gemini-flash-latest',
-          contents,
+      // Start with an empty model message for streaming
+      setMessages([...currentMessages, { role: 'model', content: '' }]);
+
+      const responseStream = await ai.models.generateContentStream({
+        model: 'gemini-3-flash-preview',
+        contents,
+        config: {
           systemInstruction,
-        }),
+          temperature: 0.7,
+        }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to generate content");
+      let fullContent = '';
+      for await (const chunk of responseStream) {
+        const text = chunk.text;
+        if (text) {
+          fullContent += text;
+          setMessages(prev => {
+            const next = [...prev];
+            if (next.length > 0 && next[next.length - 1].role === 'model') {
+              next[next.length - 1] = { role: 'model', content: fullContent };
+            }
+            return next;
+          });
+        }
       }
-
-      const data = await response.json();
-      setMessages([...newMessages, { role: 'model', content: data.text || "Sorry, I couldn't generate a response." }]);
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Could not connect to AI Assistant");
-      // Remove the last user message on failure or add an error message
-      setMessages([...newMessages, { role: 'model', content: "Sorry, I'm having trouble right now. Please try again later." }]);
+      setMessages(prev => [
+        ...prev, 
+        { role: 'model', content: "Sorry, I'm having trouble right now. This model might be experiencing high demand. Please try again in a moment." }
+      ]);
     } finally {
       setIsLoading(false);
     }
