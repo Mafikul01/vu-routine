@@ -6,7 +6,7 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const rawKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    const rawKey = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
     const apiKey = rawKey ? rawKey.trim() : undefined;
     if (!apiKey) {
       return res.status(500).json({ error: "Gemini API key is not configured on the server." });
@@ -16,7 +16,7 @@ export default async function handler(req: any, res: any) {
     const { model, contents, systemInstruction } = req.body;
 
     const response = await ai.models.generateContent({
-      model: model || 'gemini-1.5-flash',
+      model: model || 'gemini-3-flash-preview',
       contents,
       config: {
         systemInstruction,
