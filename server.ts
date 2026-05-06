@@ -75,19 +75,23 @@ async function startServer() {
       }
       
       const rawKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-      const apiKey = rawKey?.trim().replace(/^["']|["']$/g, ''); // Remove accidental quotes
+      const apiKey = rawKey?.trim().replace(/^[`'"]+|[`'"]+$/g, ''); // More aggressive quote removal
       
-      if (!apiKey || apiKey === 'YOUR_GEMINI_API_KEY') {
+      if (!apiKey || apiKey.length < 15) {
+        console.warn(`Gemini API Key missing or too short (${apiKey?.length || 0}).`);
         return res.status(401).json({ 
           error: "Gemini API key is invalid or missing. Please add a valid GEMINI_API_KEY to Settings -> Environment Variables." 
         });
       }
+
+      // Log only length and metadata for privacy
+      console.log(`[Gemini Proxy] Key loaded. Length: ${apiKey.length}. Prefix: ${apiKey.substring(0, 4)}`);
       
       const ai = new GoogleGenAI({ apiKey });
       const { model, contents, systemInstruction } = req.body;
 
       const response = await ai.models.generateContent({
-        model: model || 'gemini-3-flash-preview',
+        model: model || 'gemini-1.5-flash', // More stable default
         contents,
         config: {
           systemInstruction,
