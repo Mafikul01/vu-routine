@@ -64,6 +64,34 @@ async function startServer() {
     }
   });
 
+  // Gemini Chat Proxy
+  app.post("/api/chat", async (req, res) => {
+    try {
+      const { GoogleGenAI } = await import("@google/genai");
+      
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "Gemini API key is not configured on the server." });
+      }
+      
+      const ai = new GoogleGenAI({ apiKey });
+      const { model, contents, systemInstruction } = req.body;
+
+      const response = await ai.models.generateContent({
+        model: model || 'gemini-2.5-flash',
+        contents,
+        config: {
+          systemInstruction,
+        }
+      });
+
+      res.json({ text: response.text });
+    } catch (error) {
+      console.error("Gemini Proxy Error:", error);
+      res.status(500).json({ error: "Failed to generate content" });
+    }
+  });
+
   // Vite middleware setup
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

@@ -5,11 +5,6 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 
-import { GoogleGenAI } from '@google/genai';
-
-const apiKey = (typeof process !== "undefined" ? process.env.GEMINI_API_KEY : undefined) || (import.meta as any).env?.VITE_GEMINI_API_KEY;
-const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
-
 interface Message {
   role: 'user' | 'model';
   content: string;
@@ -84,10 +79,6 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
     setIsLoading(true);
 
     try {
-      if (!ai) {
-        throw new Error("AI Assistant requires an API key in the environment (GEMINI_API_KEY or VITE_GEMINI_API_KEY).");
-      }
-
       const systemInstruction = `You are Mr. Mendak, a helpful university AI assistant for the VU Routine App.
 Your task is to help students analyze their class routine, find free rooms, and check teacher availability.
 You will be provided with the current routine data in JSON format for the relevant semester.
@@ -117,16 +108,25 @@ ${teacherInfo ? JSON.stringify(teacherInfo).substring(0, 50000) : "No teacher di
         parts: [{ text: msg.content }]
       }));
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents,
-        config: {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gemini-2.5-flash',
+          contents,
           systemInstruction,
-          temperature: 0.2
-        }
+        }),
       });
 
-      setMessages([...newMessages, { role: 'model', content: response.text || "Sorry, I couldn't generate a response." }]);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate content");
+      }
+
+      const data = await response.json();
+      setMessages([...newMessages, { role: 'model', content: data.text || "Sorry, I couldn't generate a response." }]);
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Could not connect to AI Assistant");
