@@ -35,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AiAssistant } from "@/components/AiAssistant";
 
 const DEFAULT_SHEET = "https://docs.google.com/spreadsheets/d/1Sdmr60rcZeBCa2ofswUr9mxIreIj71W9HYM1RRhvfMM/edit";
 const INFO_GID = "989827005";
@@ -838,7 +839,7 @@ export default function Index() {
         <div className="w-full max-w-sm space-y-6 text-center">
           <div>
             <div className="mx-auto mb-6 flex items-center justify-center rounded-2xl overflow-hidden p-2">
-              <img src="/logo.png" alt="Vu Routine Logo" className="object-contain" style={{ width: '250px', height: '250px', marginTop: '-7px' }} />
+              <img src="/app-logo.png" alt="Vu Routine Logo" className="object-contain" style={{ width: '250px', height: '250px', marginTop: '-7px' }} />
             </div>
           </div>
           <div className="space-y-4">
@@ -902,7 +903,7 @@ export default function Index() {
       <div className="mb-5 flex items-center justify-between relative z-50">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <img src="/logo.png" alt="My Routine" style={{ width: '38px', height: '38px' }} className="object-contain drop-shadow-sm" />
+            <img src="/app-logo.png" alt="My Routine" style={{ width: '38px', height: '38px' }} className="object-contain drop-shadow-sm" />
             <h1 className="font-heading font-bold leading-none" style={{ marginTop: '-9px', marginLeft: '-8px', fontSize: '22.75px' }}>
               {role === "student" ? "My Routine" : "My Classes"}
             </h1>
@@ -930,36 +931,46 @@ export default function Index() {
             </p>
           )}
         </div>
-        <div className="flex gap-2 relative" ref={menuRef}>
+        <div className="flex flex-col items-end gap-2 relative" ref={menuRef}>
+          <div className="flex gap-2">
+            <button
+              onClick={fetchDynamicRoutine}
+              disabled={isSyncing}
+              className={`flex items-center justify-center rounded-lg bg-secondary p-2 transition-all hover:bg-secondary/80 ${isSyncing ? "animate-spin opacity-50" : ""}`}
+              title="Refresh from Google Sheet"
+            >
+              <RefreshCcw className="h-4 w-4 text-secondary-foreground" />
+            </button>
+            <button
+              onClick={() => {
+                window.history.pushState({ modal: "changeRole" }, "");
+                setIsChangingRole(true);
+              }}
+              className="flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
+            >
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+              Switch
+            </button>
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="flex items-center justify-center rounded-lg bg-secondary p-2 transition-all hover:bg-secondary/80"
+              title="Menu"
+            >
+              <Menu className="h-4 w-4 text-secondary-foreground" />
+            </button>
+          </div>
+          
           <button
-            onClick={fetchDynamicRoutine}
-            disabled={isSyncing}
-            className={`flex items-center justify-center rounded-lg bg-secondary p-2 transition-all hover:bg-secondary/80 ${isSyncing ? "animate-spin opacity-50" : ""}`}
-            title="Refresh from Google Sheet"
+            onClick={() => setIsRoomFinderOpen(true)}
+            className="flex items-center gap-2 rounded-full border border-blue-200 dark:border-blue-800/60 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-300 transition-all shadow-sm active:scale-95 absolute top-[calc(100%+8px)] right-0"
           >
-            <RefreshCcw className="h-4 w-4 text-secondary-foreground" />
-          </button>
-          <button
-            onClick={() => {
-              window.history.pushState({ modal: "changeRole" }, "");
-              setIsChangingRole(true);
-            }}
-            className="flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
-          >
-            <ArrowLeftRight className="h-3.5 w-3.5" />
-            Switch
-          </button>
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="flex items-center justify-center rounded-lg bg-secondary p-2 transition-all hover:bg-secondary/80"
-            title="Menu"
-          >
-            <Menu className="h-4 w-4 text-secondary-foreground" />
+            <MapPin className="h-3 w-3" />
+            Room Finder
           </button>
 
           {/* Dropdown Menu */}
           {isMenuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border bg-card p-1 shadow-lg z-50 animate-fade-in">
+            <div className="absolute right-0 top-[calc(100%+40px)] mt-2 w-48 rounded-xl border bg-card p-1 shadow-lg z-50 animate-fade-in">
               <button
                 onClick={() => {
                   setIsMenuOpen(false);
@@ -1250,9 +1261,6 @@ export default function Index() {
       {/* Room Finder FAB & Dialog */}
       <Dialog open={isRoomFinderOpen} onOpenChange={setIsRoomFinderOpen}>
         <DialogTrigger asChild>
-          <button className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl active:scale-95 z-[99999]">
-            <span className="material-symbols-outlined text-[28px]">search_insights</span>
-          </button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-md max-h-[85vh] p-0 flex flex-col">
           <DialogHeader className="p-6 pb-2">
@@ -1330,7 +1338,7 @@ export default function Index() {
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-green-600 font-medium bg-green-50 p-3 rounded-lg border border-green-100 dark:bg-green-900/20 dark:border-green-900/30">
+                      <p className="text-sm text-green-600 dark:text-green-400 font-medium bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-100 dark:border-green-900/30">
                         Room is free all day!
                       </p>
                     )}
@@ -2094,6 +2102,8 @@ export default function Index() {
       </DialogContent>
       </Dialog>
     </div>
+    {/* Floating AI Assistant Widget */}
+    <AiAssistant routineData={currentRoutine} semester={semester} section={section} />
     </>
   );
 }

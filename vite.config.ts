@@ -31,19 +31,19 @@ export default defineConfig(({ mode }) => ({
         id: '/',
         icons: [
           {
-            src: '/logoapp.png',
+            src: '/app-icon.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any'
           },
           {
-            src: '/logoapp.png',
+            src: '/app-icon.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any'
           },
           {
-            src: '/logoapp.png',
+            src: '/app-icon.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable'
