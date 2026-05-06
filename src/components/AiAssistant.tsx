@@ -158,6 +158,14 @@ Your task is to help students analyze their class routine, find free rooms, and 
 Current user: Semester ${semester}, Section ${section}.
 Today: ${new Date().toLocaleDateString('en-US', { weekday: 'long' })}
 
+STRICT SLOT TIME MAPPING:
+Slot 1: 09:00 AM - 10:00 AM
+Slot 2: 10:05 AM - 11:05 AM
+Slot 3: 11:10 AM - 12:10 PM
+Slot 4: 12:15 PM - 01:15 PM
+Slot 5: 01:50 PM - 02:50 PM
+Slot 6: 02:55 PM - 03:55 PM
+
 Routine Context (Filtered):
 ${JSON.stringify(optimizedRoutine).substring(0, 15000)}
 
@@ -165,9 +173,12 @@ Teacher Contact:
 ${JSON.stringify(optimizedTeachers).substring(0, 5000)}
 
 Instructions:
-- Be concise. Use plain text (no markdown ** or #).
+- Be concise. Speak naturally like a helpful assistant.
+- Use plain text (no markdown ** or #).
 - When asked about free rooms, check the Routine Context for rooms NOT occupied during that slot today.
-- Created by Mafikul Islam.
+- ALWAYS refer to the Slot Time Mapping above when mentioning class times.
+- DO NOT end your messages with a signature or repetitive closing phrases like "How else can I assist you?".
+- You were created by Mafikul Islam (only mention this if specifically asked).
 `;
 
       setMessages([...currentMessages, { role: 'model', content: '' }]);
@@ -242,53 +253,35 @@ Instructions:
       </AnimatePresence>
 
       {/* Floating Button */}
-      <motion.div
-        className="fixed bottom-4 right-4 z-50 flex items-center gap-3"
-        initial={{ y: 100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ type: 'spring', delay: 0.5 }}
-      >
+      <AnimatePresence>
         {!isOpen && (
-          <motion.div 
-            initial={{ x: 20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 20, opacity: 0 }}
-            className="bg-primary text-primary-foreground text-xs px-3 py-1.5 rounded-full shadow-lg pointer-events-none whitespace-nowrap"
+          <motion.div
+            className="fixed bottom-4 right-4 z-50 flex items-center gap-3"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 20, opacity: 0 }}
+            transition={{ type: 'spring', delay: isOpen ? 0 : 0.5 }}
           >
-            Ask me anything ✨
+            <motion.div 
+              initial={{ x: 20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 20, opacity: 0 }}
+              className="bg-primary text-primary-foreground text-xs px-3 py-1.5 rounded-full shadow-lg pointer-events-none whitespace-nowrap"
+            >
+              Ask me anything ✨
+            </motion.div>
+            <Button
+              ref={buttonRef}
+              onClick={() => setIsOpen(true)}
+              className="h-14 w-14 rounded-full shadow-2xl transition-transform hover:scale-110 relative"
+              size="icon"
+              aria-label="Open AI Assistant"
+            >
+              <Bot className="h-7 w-7" />
+            </Button>
           </motion.div>
         )}
-        <Button
-          ref={buttonRef}
-          onClick={() => setIsOpen(!isOpen)}
-          className="h-14 w-14 rounded-full shadow-2xl transition-transform hover:scale-110 relative"
-          size="icon"
-          aria-label="Toggle AI Assistant"
-        >
-          <AnimatePresence mode="wait">
-            {isOpen ? (
-              <motion.div
-                key="close"
-                initial={{ rotate: -90, opacity: 0 }}
-                animate={{ rotate: 0, opacity: 1 }}
-                exit={{ rotate: 90, opacity: 0 }}
-              >
-                <X className="h-6 w-6" />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="bot"
-                initial={{ rotate: 90, opacity: 0 }}
-                animate={{ rotate: 0, opacity: 1 }}
-                exit={{ rotate: -90, opacity: 0 }}
-                className="relative"
-              >
-                <Bot className="h-7 w-7" />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </Button>
-      </motion.div>
+      </AnimatePresence>
 
       {/* Chat Window */}
       <AnimatePresence>
@@ -309,7 +302,7 @@ Instructions:
                   <Bot className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm">Mr. Mendak 🐸</h3>
+                  <h3 className="font-semibold text-sm">Mr. Mendak 🐸 <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded ml-1">v1.1</span></h3>
                   <p className="text-[10px] text-primary-foreground/80">Created by Mafikul Islam</p>
                 </div>
               </div>
@@ -367,7 +360,7 @@ Instructions:
             </div>
 
             {/* Input area */}
-            <div className="p-3 bg-background border-t border-border flex gap-2 shrink-0">
+            <div className="p-3 bg-background border-t border-border flex items-center gap-2 shrink-0">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -381,9 +374,9 @@ Instructions:
                 size="icon" 
                 onClick={handleSend} 
                 disabled={!input.trim() || isLoading}
-                className="rounded-full shrink-0 h-[44px] w-[44px]"
+                className="rounded-full shrink-0 h-11 w-11 flex items-center justify-center translate-y-[1px]"
               >
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 ml-1" />}
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
             </div>
