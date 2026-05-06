@@ -4,7 +4,6 @@ import { Bot, X, Send, Loader2, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { GoogleGenAI } from "@google/genai";
 
 interface Message {
   role: 'user' | 'model';
@@ -94,8 +93,6 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
     setIsLoading(true);
 
     try {
-      const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
       // --- OPTIMIZATION START ---
       // 1. Filter Routine Data significantly
       interface RoutineEntry {
@@ -181,41 +178,39 @@ Instructions:
 - You were created by Mafikul Islam (only mention this if specifically asked).
 `;
 
-      setMessages([...currentMessages, { role: 'model', content: '' }]);
-      let fullContent = '';
-
-      if (!geminiKey) {
-        throw new Error("Gemini API key is not configured in Settings.");
-      }
-
-      const ai = new GoogleGenAI({ apiKey: geminiKey });
+      setMessages([...currentMessages, { role: 'model', content: 'Thinking...' }]);
+      
       const contents = historyToKeep.map(msg => ({
         role: msg.role === 'user' ? 'user' : 'model',
         parts: [{ text: msg.content }]
       }));
 
-      const responseStream = await ai.models.generateContentStream({
-        model: 'gemini-3-flash-preview',
-        contents,
-        config: {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents,
           systemInstruction,
-          temperature: 0.7,
-        }
+          model: 'gemini-3-flash-preview'
+        })
       });
 
-      for await (const chunk of responseStream) {
-        const text = chunk.text;
-        if (text) {
-          fullContent += text;
-          setMessages(prev => {
-            const next = [...prev];
-            if (next.length > 0 && next[next.length - 1].role === 'model') {
-              next[next.length - 1] = { role: 'model', content: fullContent };
-            }
-            return next;
-          });
-        }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Server error: ${response.status}`);
       }
+
+      const data = await response.json();
+      const aiText = data.text;
+
+      setMessages(prev => {
+        const next = [...prev];
+        if (next.length > 0 && next[next.length - 1].role === 'model') {
+          next[next.length - 1] = { role: 'model', content: aiText };
+        }
+        return next;
+      });
+
     } catch (err: unknown) {
       console.error(err);
       const errorMessage = err instanceof Error ? err.message : "Could not connect to AI Assistant";
