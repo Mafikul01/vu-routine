@@ -96,26 +96,77 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
     try {
       const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
+      // --- OPTIMIZATION START ---
+      // 1. Filter Routine Data significantly
+      interface RoutineEntry {
+        day: string;
+        slot: number;
+        course: string;
+        room: string;
+        teachers: string[];
+        semester: number;
+        section: string;
+      }
+      
+      let optimizedRoutine: unknown[] = [];
+      if (Array.isArray(routineData)) {
+        const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+        
+        // Include:
+        // - All classes for current user (semester/section)
+        // - All classes for TODAY (to help find free rooms)
+        optimizedRoutine = (routineData as RoutineEntry[]).filter((entry) => 
+          (entry.semester === semester && entry.section === section) || 
+          entry.day === today
+        ).map((entry) => ({
+          d: entry.day.substring(0, 3), // Shorten day
+          s: entry.slot,
+          c: entry.course,
+          r: entry.room,
+          t: entry.teachers.join(','),
+          sem: entry.semester,
+          sec: entry.section
+        }));
+      }
+
+      // 2. Filter Teacher Info
+      interface TeacherEntry {
+        name?: string;
+        Name?: string;
+        initials?: string;
+        Initials?: string;
+        phone?: string;
+        Phone?: string;
+        number?: string;
+      }
+
+      const optimizedTeachers = Array.isArray(teacherInfo) 
+        ? (teacherInfo as TeacherEntry[]).map((t) => ({
+            n: t.name || t.Name,
+            i: t.initials || t.Initials,
+            p: t.phone || t.Phone || t.number
+          })) 
+        : [];
+
+      // 3. Limit conversation history to last 8 messages
+      const historyLimit = 8;
+      const historyToKeep = currentMessages.slice(-historyLimit);
+      // --- OPTIMIZATION END ---
+
       const systemInstruction = `You are Mr. Mendak, a helpful university AI assistant for the VU Routine App.
 Your task is to help students analyze their class routine, find free rooms, and check teacher availability.
-Current user context: Semester ${semester}, Section ${section}.
-Return exact time for slots:
-Slot 1: 09:00 AM - 10:00 AM
-Slot 2: 10:05 AM - 11:05 AM
-Slot 3: 11:10 AM - 12:10 PM
-Slot 4: 12:15 PM - 01:15 PM
-Slot 5: 01:50 PM - 02:50 PM
-Slot 6: 02:55 PM - 03:55 PM
+Current user: Semester ${semester}, Section ${section}.
+Today: ${new Date().toLocaleDateString('en-US', { weekday: 'long' })}
 
-Routine Data:
-${routineData ? JSON.stringify(routineData).substring(0, 15000) : "N/A"}
+Routine Context (Filtered):
+${JSON.stringify(optimizedRoutine).substring(0, 15000)}
 
-Teacher Info:
-${teacherInfo ? JSON.stringify(teacherInfo).substring(0, 10000) : "N/A"}
+Teacher Contact:
+${JSON.stringify(optimizedTeachers).substring(0, 5000)}
 
 Instructions:
-- Be concise.
-- Use plain text (no markdown like ** or #).
+- Be concise. Use plain text (no markdown ** or #).
+- When asked about free rooms, check the Routine Context for rooms NOT occupied during that slot today.
 - Created by Mafikul Islam.
 `;
 
@@ -127,13 +178,13 @@ Instructions:
       }
 
       const ai = new GoogleGenAI({ apiKey: geminiKey });
-      const contents = currentMessages.map(msg => ({
+      const contents = historyToKeep.map(msg => ({
         role: msg.role === 'user' ? 'user' : 'model',
         parts: [{ text: msg.content }]
       }));
 
       const responseStream = await ai.models.generateContentStream({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-3-flash-preview',
         contents,
         config: {
           systemInstruction,

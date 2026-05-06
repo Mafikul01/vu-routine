@@ -19,13 +19,14 @@ If you receive the error "Failed to push commit to GitHub", it is usually due to
 1. Import your repository into [Vercel](https://vercel.com).
 2. Go to **Settings -> Environment Variables**.
 3. Add the following variable:
-   - **Key**: `VITE_GITHUB_TOKEN`
-   - **Value**: `github_pat_...` (Enter your GitHub Token here)
+   - **Key**: `VITE_GEMINI_API_KEY`
+   - **Value**: `AIzaSyDCv9...` (Enter your routineApi key here)
 4. Deploy the app.
 
 ## Which API is being used?
 The AI Assistant is currently configured to use:
-- **Primary**: **Gemini 1.5 Flash** (using the `VITE_GEMINI_API_KEY`).
-- **Status**: GitHub Models and OpenAI integrations have been removed.
+- **Primary**: **Gemini 3 Flash Preview** (using the `VITE_GEMINI_API_KEY`).
+- **API Alias**: This is your `routineApi` key.
+- **Status**: GitHub Models and OpenAI integrations have been removed to optimize tokens.
 
-The code is optimized for Gemini 1.5 Flash to ensure high reliability and free-tier compatibility.
+The code is optimized for Gemini 3 Flash Preview to ensure high reliability and free-tier compatibility.
