@@ -69,7 +69,7 @@ async function startServer() {
     try {
       const { GoogleGenAI } = await import("@google/genai");
       
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
       if (!apiKey) {
         return res.status(500).json({ error: "Gemini API key is not configured on the server." });
       }
@@ -78,7 +78,7 @@ async function startServer() {
       const { model, contents, systemInstruction } = req.body;
 
       const response = await ai.models.generateContent({
-        model: model || 'gemini-2.5-flash',
+        model: model || 'gemini-1.5-flash',
         contents,
         config: {
           systemInstruction,
@@ -86,9 +86,9 @@ async function startServer() {
       });
 
       res.json({ text: response.text });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Gemini Proxy Error:", error);
-      res.status(500).json({ error: "Failed to generate content" });
+      res.status(500).json({ error: error.message || "Failed to generate content" });
     }
   });
 

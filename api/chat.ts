@@ -6,7 +6,7 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
     if (!apiKey) {
       return res.status(500).json({ error: "Gemini API key is not configured on the server." });
     }
@@ -15,7 +15,7 @@ export default async function handler(req: any, res: any) {
     const { model, contents, systemInstruction } = req.body;
 
     const response = await ai.models.generateContent({
-      model: model || 'gemini-2.5-flash',
+      model: model || 'gemini-1.5-flash',
       contents,
       config: {
         systemInstruction,
@@ -23,8 +23,8 @@ export default async function handler(req: any, res: any) {
     });
 
     res.status(200).json({ text: response.text });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini Serverless Error:", error);
-    res.status(500).json({ error: "Failed to generate content" });
+    res.status(500).json({ error: error.message || "Failed to generate content" });
   }
 }
