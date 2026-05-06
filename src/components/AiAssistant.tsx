@@ -291,8 +291,8 @@ Instructions:
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-24 right-5 w-[350px] max-w-[calc(100vw-40px)] bg-background border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[50] p-0"
-            style={{ maxHeight: 'calc(100vh - 120px)', height: '550px' }}
+            className="fixed bottom-4 right-4 sm:bottom-24 sm:right-5 w-[calc(100vw-32px)] sm:w-[380px] bg-background border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[50] p-0"
+            style={{ maxHeight: 'calc(100dvh - 32px)', height: 'min(600px, calc(100dvh - 32px))' }}
           >
             <div ref={windowRef} className="flex flex-col h-full w-full">
             {/* Header */}
