@@ -52,6 +52,13 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
       window.history.pushState({ aiOpen: true }, '');
+      
+      // Lock background scrolling effectively
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.overscrollBehaviorY = 'none';
+      document.body.style.overscrollBehaviorY = 'none';
     }
 
     const handlePopState = () => {
@@ -65,6 +72,13 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       window.removeEventListener('popstate', handlePopState);
+      
+      // Restore background scrolling
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+      document.documentElement.style.overflow = '';
+      document.documentElement.style.overscrollBehaviorY = '';
+      document.body.style.overscrollBehaviorY = '';
     };
   }, [isOpen]);
 
@@ -114,7 +128,7 @@ ${teacherInfo ? JSON.stringify(teacherInfo).substring(0, 50000) : "No teacher di
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gemini-3-flash-preview',
+          model: 'gemini-flash-latest',
           contents,
           systemInstruction,
         }),
@@ -146,6 +160,20 @@ ${teacherInfo ? JSON.stringify(teacherInfo).substring(0, 50000) : "No teacher di
 
   return (
     <>
+      {/* Backdrop */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[45]"
+            style={{ touchAction: 'none' }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Floating Button */}
       <motion.div
         className="fixed bottom-4 right-4 z-50 flex items-center gap-3"
@@ -203,12 +231,12 @@ ${teacherInfo ? JSON.stringify(teacherInfo).substring(0, 50000) : "No teacher di
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-24 right-5 w-[350px] max-w-[calc(100vw-48px)] bg-background border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col z-50 p-0"
-            style={{ maxHeight: 'calc(100vh - 120px)', height: '500px' }}
+            className="fixed bottom-24 right-5 w-[350px] max-w-[calc(100vw-40px)] bg-background border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[50] p-0"
+            style={{ maxHeight: 'calc(100vh - 120px)', height: '550px' }}
           >
             <div ref={windowRef} className="flex flex-col h-full w-full">
             {/* Header */}
-            <div className="bg-primary p-4 text-primary-foreground flex items-center justify-between gap-3">
+            <div className="bg-primary p-4 text-primary-foreground flex items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="bg-white/20 p-2 rounded-full">
                   <Bot className="h-5 w-5" />
@@ -230,9 +258,8 @@ ${teacherInfo ? JSON.stringify(teacherInfo).substring(0, 50000) : "No teacher di
 
             {/* Messages */}
             <div 
-              className="flex-1 overflow-y-auto p-4 bg-muted/20 overscroll-none touch-pan-y"
-              onWheel={(e) => e.stopPropagation()}
-              onTouchMove={(e) => e.stopPropagation()}
+              className="flex-1 overflow-y-auto p-4 bg-muted/20 overscroll-contain"
+              style={{ WebkitOverflowScrolling: 'touch' }}
             >
               <div className="flex flex-col gap-4 pb-4">
                 {messages.map((msg, idx) => (
@@ -273,7 +300,7 @@ ${teacherInfo ? JSON.stringify(teacherInfo).substring(0, 50000) : "No teacher di
             </div>
 
             {/* Input area */}
-            <div className="p-3 bg-background border-t border-border flex gap-2">
+            <div className="p-3 bg-background border-t border-border flex gap-2 shrink-0">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
