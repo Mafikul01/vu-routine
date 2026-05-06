@@ -839,7 +839,7 @@ export default function Index() {
         <div className="w-full max-w-sm space-y-6 text-center">
           <div>
             <div className="mx-auto mb-6 flex items-center justify-center rounded-2xl overflow-hidden p-2">
-              <img src="/app-logo.png" alt="Vu Routine Logo" className="object-contain" style={{ width: '250px', height: '250px', marginTop: '-7px' }} />
+              <img src="https://i.imgur.com/3lIISc2.png" alt="Vu Routine Logo" className="object-contain" style={{ width: '250px', height: '250px', marginTop: '-7px' }} />
             </div>
           </div>
           <div className="space-y-4">
@@ -903,7 +903,7 @@ export default function Index() {
       <div className="mb-5 flex items-center justify-between relative z-50">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <img src="/app-logo.png" alt="My Routine" style={{ width: '38px', height: '38px' }} className="object-contain drop-shadow-sm" />
+            <img src="https://i.imgur.com/3lIISc2.png" alt="My Routine" style={{ width: '38px', height: '38px' }} className="object-contain drop-shadow-sm" />
             <h1 className="font-heading font-bold leading-none" style={{ marginTop: '-9px', marginLeft: '-8px', fontSize: '22.75px' }}>
               {role === "student" ? "My Routine" : "My Classes"}
             </h1>

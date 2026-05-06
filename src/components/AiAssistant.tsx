@@ -229,7 +229,11 @@ ${teacherInfo ? JSON.stringify(teacherInfo).substring(0, 50000) : "No teacher di
             </div>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4 bg-muted/20">
+            <div 
+              className="flex-1 overflow-y-auto p-4 bg-muted/20 overscroll-none touch-pan-y"
+              onWheel={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
+            >
               <div className="flex flex-col gap-4 pb-4">
                 {messages.map((msg, idx) => (
                   <motion.div
@@ -245,7 +249,9 @@ ${teacherInfo ? JSON.stringify(teacherInfo).substring(0, 50000) : "No teacher di
                           : 'bg-muted border border-border text-foreground'
                       }`}
                     >
-                      {msg.content}
+                      <div className="markdown-body">
+                        {msg.content}
+                      </div>
                     </div>
                   </motion.div>
                 ))}
@@ -256,15 +262,15 @@ ${teacherInfo ? JSON.stringify(teacherInfo).substring(0, 50000) : "No teacher di
                     className="flex justify-start"
                   >
                     <div className="bg-muted border border-border text-foreground rounded-2xl px-4 py-3 flex gap-1 items-center">
-                      <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                      <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                      <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce"></span>
+                      <span className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                      <span className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                      <span className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce"></span>
                     </div>
                   </motion.div>
                 )}
                 <div ref={messagesEndRef} />
               </div>
-            </ScrollArea>
+            </div>
 
             {/* Input area */}
             <div className="p-3 bg-background border-t border-border flex gap-2">

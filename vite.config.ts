@@ -20,7 +20,23 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/i\.imgur\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'imgur-images',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          }
+        ]
       },
       manifest: {
         name: 'Vu Routine',
@@ -31,19 +47,19 @@ export default defineConfig(({ mode }) => ({
         id: '/',
         icons: [
           {
-            src: '/app-icon.png',
+            src: 'https://i.imgur.com/X13BpyI.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any'
           },
           {
-            src: '/app-icon.png',
+            src: 'https://i.imgur.com/X13BpyI.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any'
           },
           {
-            src: '/app-icon.png',
+            src: 'https://i.imgur.com/X13BpyI.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable'
