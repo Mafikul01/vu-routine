@@ -174,8 +174,9 @@ Instructions:
 - Use plain text (no markdown ** or #).
 - When asked about free rooms, check the Routine Context for rooms NOT occupied during that slot today.
 - ALWAYS refer to the Slot Time Mapping above when mentioning class times.
-- DO NOT end your messages with a signature or repetitive closing phrases like "How else can I assist you?".
+- DO NOT end your messages with any signature, name, or repetitive closing phrases like "How else can I assist you?".
 - You were created by Mafikul Islam (only mention this if specifically asked).
+- Stay in character as a helpful assistant, but be direct.
 `;
 
       setMessages([...currentMessages, { role: 'model', content: 'Thinking...' }]);
@@ -194,6 +195,10 @@ Instructions:
           model: 'gemini-3-flash-preview'
         })
       });
+
+      if (response.status === 401) {
+        throw new Error("Gemini API key is missing. Please go to Settings -> Environment Variables and add GEMINI_API_KEY.");
+      }
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -287,7 +292,7 @@ Instructions:
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="fixed bottom-4 right-4 sm:bottom-24 sm:right-5 w-[calc(100vw-32px)] sm:w-[380px] bg-background border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[50] p-0"
-            style={{ maxHeight: 'calc(100dvh - 32px)', height: 'min(600px, calc(100dvh - 32px))' }}
+            style={{ maxHeight: 'calc(100dvh - 120px)', height: 'min(600px, calc(100dvh - 120px))' }}
           >
             <div ref={windowRef} className="flex flex-col h-full w-full">
             {/* Header */}

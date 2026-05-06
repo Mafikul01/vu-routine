@@ -67,12 +67,20 @@ async function startServer() {
   // Gemini Chat Proxy
   app.post("/api/chat", async (req, res) => {
     try {
-      const { GoogleGenAI } = await import("@google/genai");
+      const genAIModule = await import("@google/genai");
+      const GoogleGenAI = genAIModule.GoogleGenAI;
       
-      const rawKey = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-      const apiKey = rawKey ? rawKey.trim() : undefined;
-      if (!apiKey) {
-        return res.status(500).json({ error: "Gemini API key is not configured on the server." });
+      if (!GoogleGenAI) {
+        throw new Error("Failed to load GoogleGenAI from @google/genai module.");
+      }
+      
+      const rawKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+      const apiKey = rawKey?.trim().replace(/^["']|["']$/g, ''); // Remove accidental quotes
+      
+      if (!apiKey || apiKey === 'YOUR_GEMINI_API_KEY') {
+        return res.status(401).json({ 
+          error: "Gemini API key is invalid or missing. Please add a valid GEMINI_API_KEY to Settings -> Environment Variables." 
+        });
       }
       
       const ai = new GoogleGenAI({ apiKey });
@@ -83,6 +91,7 @@ async function startServer() {
         contents,
         config: {
           systemInstruction,
+          temperature: 0.7,
         }
       });
 
