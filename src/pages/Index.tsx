@@ -17,7 +17,7 @@ import {
   ClassEntry,
   routineData as staticRoutineData,
 } from "@/data/routineData";
-import { GraduationCap, User, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, Code, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote, FileText, Bus, Edit2, Save } from "lucide-react";
+import { GraduationCap, User, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, CodeXml, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote, FileText, Bus, Edit2, Save } from "lucide-react";
 import { useTheme } from "@/components/ThemeContext";
 import { toast } from "@/components/ui/sonner";
 import { motion, AnimatePresence } from "motion/react";
@@ -1795,7 +1795,7 @@ export default function Index() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-heading text-xl font-bold flex items-center gap-2">
-              <Code className="h-5 w-5 text-indigo-500" />
+              <CodeXml className="h-5 w-5 text-indigo-500" />
               Developer Info
             </DialogTitle>
           </DialogHeader>
@@ -1813,7 +1813,7 @@ export default function Index() {
             <div className="text-center space-y-1.5">
               <h3 className="font-heading text-2xl font-bold">{adminSettings.devName || "Mafikul Islam"}</h3>
               <p className="text-sm font-medium text-primary">Student ID: {adminSettings.devStudentId || "232311070"}</p>
-              <p className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">3rd - B</p>
+              <p className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">33rd - 6th B</p>
               <p className="text-xs text-muted-foreground pt-2">
                 Developer & Maintainer of the CSE Class Routine App
               </p>
@@ -1821,7 +1821,7 @@ export default function Index() {
             
             <div className="mt-6 flex justify-center gap-4">
               <a 
-                href={`https://wa.me/${adminSettings.devWhatsapp || "8801788302771"}`} 
+                href={`https://wa.me/${adminSettings.devWhatsapp || "+8801788302771"}`} 
                 target="_blank" 
                 rel="noreferrer" 
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10 text-green-600 transition-colors hover:bg-green-500 hover:text-white"

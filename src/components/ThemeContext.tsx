@@ -49,14 +49,17 @@ export function ThemeProvider({
     root.classList.add(activeTheme);
     
     // Update theme-color meta tag for mobile status bar
-    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    if (!metaThemeColor) {
-      metaThemeColor = document.createElement("meta");
-      metaThemeColor.setAttribute("name", "theme-color");
-      document.head.appendChild(metaThemeColor);
-    }
-    // Use exact HEX string to ensure all mobile browsers color it correctly
-    metaThemeColor.setAttribute("content", activeTheme === "dark" ? "#020817" : "#ffffff");
+    const updateThemeColor = (color: string) => {
+      let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      if (!metaThemeColor) {
+        metaThemeColor = document.createElement("meta");
+        metaThemeColor.setAttribute("name", "theme-color");
+        document.head.appendChild(metaThemeColor);
+      }
+      metaThemeColor.setAttribute("content", color);
+    };
+
+    updateThemeColor(activeTheme === "dark" ? "#020817" : "#ffffff");
 
   }, [theme]);
 
