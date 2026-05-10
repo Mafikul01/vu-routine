@@ -45,6 +45,8 @@ export default defineConfig(({ mode }) => ({
         display: 'standalone',
         start_url: '/',
         id: '/',
+        theme_color: '#ffffff',
+        background_color: '#ffffff',
         icons: [
           {
             src: 'https://i.imgur.com/X13BpyI.png',

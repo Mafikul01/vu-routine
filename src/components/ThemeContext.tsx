@@ -50,13 +50,15 @@ export function ThemeProvider({
     
     // Update theme-color meta tag for mobile status bar
     const updateThemeColor = (color: string) => {
-      let metaThemeColor = document.querySelector('meta[name="theme-color"]');
-      if (!metaThemeColor) {
-        metaThemeColor = document.createElement("meta");
+      const metas = document.querySelectorAll('meta[name="theme-color"]');
+      if (metas.length === 0) {
+        let metaThemeColor = document.createElement("meta");
         metaThemeColor.setAttribute("name", "theme-color");
+        metaThemeColor.setAttribute("content", color);
         document.head.appendChild(metaThemeColor);
+      } else {
+        metas.forEach(meta => meta.setAttribute("content", color));
       }
-      metaThemeColor.setAttribute("content", color);
     };
 
     updateThemeColor(activeTheme === "dark" ? "#020817" : "#ffffff");
@@ -75,10 +77,8 @@ export function ThemeProvider({
       root.classList.remove("light", "dark");
       root.classList.add(systemTheme);
       
-      const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-      if (metaThemeColor) {
-        metaThemeColor.setAttribute("content", systemTheme === "dark" ? "#020817" : "#ffffff");
-      }
+      const metas = document.querySelectorAll('meta[name="theme-color"]');
+      metas.forEach(meta => meta.setAttribute("content", systemTheme === "dark" ? "#020817" : "#ffffff"));
     };
 
     mediaQuery.addEventListener("change", handleChange);
