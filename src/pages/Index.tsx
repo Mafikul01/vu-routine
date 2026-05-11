@@ -451,6 +451,12 @@ export default function Index() {
     };
 
     const handleTouchStart = (e: TouchEvent) => {
+      // Disable pull-to-refresh if AI assistant is open
+      if (document.body.classList.contains('ai-assistant-open')) {
+        startTouchY.current = -1;
+        return;
+      }
+
       // Ignore edge swipe gestures for navigation (e.g., within 40px of left/right screen edge)
       const touchX = e.touches[0].clientX;
       if (touchX < 40 || touchX > window.innerWidth - 40) {
@@ -467,6 +473,7 @@ export default function Index() {
 
     const handleTouchMove = (e: TouchEvent) => {
       if (startTouchY.current === -1 || !isAtTop.current || isSyncing) return;
+      if (document.body.classList.contains('ai-assistant-open')) return;
       
       const currentTouchY = e.touches[0].clientY;
       const diff = currentTouchY - startTouchY.current;

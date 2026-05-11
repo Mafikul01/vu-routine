@@ -52,7 +52,7 @@ export function ThemeProvider({
     const updateThemeColor = (color: string) => {
       const metas = document.querySelectorAll('meta[name="theme-color"]');
       if (metas.length === 0) {
-        let metaThemeColor = document.createElement("meta");
+        const metaThemeColor = document.createElement("meta");
         metaThemeColor.setAttribute("name", "theme-color");
         metaThemeColor.setAttribute("content", color);
         document.head.appendChild(metaThemeColor);

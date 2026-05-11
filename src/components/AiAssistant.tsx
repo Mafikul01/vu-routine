@@ -53,6 +53,8 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
       document.addEventListener('mousedown', handleClickOutside);
       window.history.pushState({ aiOpen: true }, '');
       
+      document.body.classList.add('ai-assistant-open');
+      
       // Lock background scrolling effectively
       document.body.style.overflow = 'hidden';
       document.body.style.touchAction = 'none';
@@ -72,6 +74,8 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       window.removeEventListener('popstate', handlePopState);
+      
+      document.body.classList.remove('ai-assistant-open');
       
       // Restore background scrolling
       document.body.style.overflow = '';
@@ -175,7 +179,7 @@ Instructions:
 - When asked about free rooms, check the Routine Context for rooms NOT occupied during that slot today.
 - ALWAYS refer to the Slot Time Mapping above when mentioning class times.
 - DO NOT end your messages with any signature, name, or repetitive closing phrases like "How else can I assist you?".
-- You were created by Mafikul Islam (only mention this if specifically asked).
+- You were created by Mafikul Islam (Student ID: 232311070, 33rd - 6th B). GitHub: https://github.com/mafikul01. WhatsApp: +8801788302771 (only mention these details if specifically asked about your creator/developer).
 - Stay in character as a helpful assistant, but be direct.
 `;
 
@@ -262,14 +266,43 @@ Instructions:
             exit={{ y: 20, opacity: 0 }}
             transition={{ type: 'spring', delay: isOpen ? 0 : 0.5 }}
           >
-            <motion.div 
+            <motion.button 
               initial={{ x: 20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
+              animate={{ 
+                x: 0, 
+                opacity: 1
+              }}
               exit={{ x: 20, opacity: 0 }}
-              className="bg-primary text-primary-foreground text-xs px-3 py-1.5 rounded-full shadow-lg pointer-events-none whitespace-nowrap"
+              onClick={() => setIsOpen(true)}
+              className="bg-primary text-primary-foreground text-xs font-medium px-3 py-1.5 rounded-full shadow-lg whitespace-nowrap cursor-pointer hover:bg-primary/90 hover:scale-105 active:scale-95 flex items-center gap-1.5"
             >
-              Ask me anything ✨
-            </motion.div>
+              <div className="flex items-center">
+                {"Ask me anything".split("").map((char, index) => (
+                  <motion.span
+                    key={index}
+                    animate={{ y: [0, -3, 0] }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                      delay: index * 0.05,
+                    }}
+                  >
+                    {char === " " ? "\u00A0" : char}
+                  </motion.span>
+                ))}
+              </div>
+              <motion.span
+                animate={{ rotate: [0, 15, -10, 0], scale: [1, 1.2, 1] }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                ✨
+              </motion.span>
+            </motion.button>
             <Button
               ref={buttonRef}
               onClick={() => setIsOpen(true)}
@@ -277,7 +310,7 @@ Instructions:
               size="icon"
               aria-label="Open AI Assistant"
             >
-              <Bot className="h-7 w-7" />
+              <Bot className="h-11 w-11" />
             </Button>
           </motion.div>
         )}
