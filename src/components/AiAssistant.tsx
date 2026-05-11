@@ -274,7 +274,7 @@ Instructions:
               }}
               exit={{ x: 20, opacity: 0 }}
               onClick={() => setIsOpen(true)}
-              className="bg-primary text-primary-foreground text-xs font-medium px-3 py-1.5 rounded-full shadow-lg whitespace-nowrap cursor-pointer hover:bg-primary/90 hover:scale-105 active:scale-95 flex items-center gap-1.5"
+              className="bg-primary text-primary-foreground text-xs font-medium px-3 py-1.5 rounded-full shadow-lg whitespace-nowrap cursor-pointer hover:bg-primary/90 hover:scale-105 flex items-center gap-1.5"
             >
               <div className="flex items-center">
                 {"Ask me anything".split("").map((char, index) => (
