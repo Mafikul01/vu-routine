@@ -98,7 +98,7 @@
 
 /* Custom class card styles used in the app */
 .routine-card {
-  @apply relative overflow-hidden transition-all border border-border rounded-2xl bg-card p-5;
+  @apply relative overflow-hidden transition-all active:scale-[0.98] border border-border rounded-2xl bg-card p-5;
 }
 
 .routine-card::before {

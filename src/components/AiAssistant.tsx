@@ -59,8 +59,8 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
       document.body.style.overflow = 'hidden';
       document.body.style.touchAction = 'none';
       document.documentElement.style.overflow = 'hidden';
-      document.documentElement.style.overscrollBehaviorY = 'none';
-      document.body.style.overscrollBehaviorY = 'none';
+      document.documentElement.style.overscrollBehavior = 'none';
+      document.body.style.overscrollBehavior = 'none';
     }
 
     const handlePopState = () => {
@@ -81,8 +81,8 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
       document.body.style.overflow = '';
       document.body.style.touchAction = '';
       document.documentElement.style.overflow = '';
-      document.documentElement.style.overscrollBehaviorY = '';
-      document.body.style.overscrollBehaviorY = '';
+      document.documentElement.style.overscrollBehavior = '';
+      document.body.style.overscrollBehavior = '';
     };
   }, [isOpen]);
 
@@ -274,7 +274,7 @@ Instructions:
               }}
               exit={{ x: 20, opacity: 0 }}
               onClick={() => setIsOpen(true)}
-              className="bg-primary text-primary-foreground text-xs font-medium px-3 py-1.5 rounded-full shadow-lg whitespace-nowrap cursor-pointer hover:bg-primary/90 hover:scale-105 flex items-center gap-1.5"
+              className="bg-primary text-primary-foreground text-xs font-medium px-3 py-1.5 rounded-full shadow-lg whitespace-nowrap cursor-pointer hover:bg-primary/90 hover:scale-105 active:scale-95 flex items-center gap-1.5"
             >
               <div className="flex items-center">
                 {"Ask me anything".split("").map((char, index) => (

@@ -367,47 +367,7 @@ export default function Index() {
     }
   }, [isAnyDialogOpen]);
 
-  useEffect(() => {
-    const primeHistory = () => {
-      if (role && !isChangingRole && !isAnyDialogOpen) {
-        if (!window.history.state || (!window.history.state.home && !window.history.state.dialogOpen && !window.history.state.modal)) {
-          window.history.replaceState({ app: true }, '');
-          window.history.pushState({ home: true }, '');
-        }
-      }
-      // Keep listeners active until at least one push occurs through interaction
-    };
 
-    // Attempt immediately on mount/update
-    primeHistory();
-
-    const handleInteraction = () => {
-      primeHistory();
-      // Once we've had a real interaction, we can be more confident the state stuck
-      window.removeEventListener('touchstart', handleInteraction);
-      window.removeEventListener('mousedown', handleInteraction);
-      window.removeEventListener('scroll', handleInteraction);
-    };
-
-    window.addEventListener('touchstart', handleInteraction, { passive: true, capture: true });
-    window.addEventListener('mousedown', handleInteraction, { capture: true });
-    window.addEventListener('scroll', handleInteraction, { passive: true, capture: true });
-
-    return () => {
-      window.removeEventListener('touchstart', handleInteraction);
-      window.removeEventListener('mousedown', handleInteraction);
-      window.removeEventListener('scroll', handleInteraction);
-    };
-  }, [role, isChangingRole, isAnyDialogOpen]);
-
-  // Special case: prime history immediately upon role selection to gain gesture "credit"
-  useEffect(() => {
-    if (role && !isChangingRole && !isAnyDialogOpen && window.history.state?.modal === "changeRole") {
-      if (!window.history.state?.home) {
-        window.history.pushState({ home: true }, '');
-      }
-    }
-  }, [role, isChangingRole, isAnyDialogOpen]);
 
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
@@ -425,16 +385,15 @@ export default function Index() {
         return;
       }
 
-      // Handle transition back from role change screen
+      // Handle transitions
+      if (e.state?.modal === "changeRole") {
+        setIsChangingRole(true);
+        return;
+      }
+      
       if (isChangingRole && role && e.state?.modal !== "changeRole") {
         setIsChangingRole(false);
         return;
-      }
-
-      // If we are on the home page and the back gesture is used, 
-      // we re-push the home state to prevent the browser's exit animation
-      if (role && !isChangingRole && !e.state?.home && !e.state?.dialogOpen && !e.state?.modal) {
-        window.history.pushState({ home: true }, '');
       }
     };
 
@@ -749,11 +708,6 @@ export default function Index() {
   const handleRoleSelect = (r: Role) => {
     setRole(r);
     setIsChangingRole(false);
-    
-    // Crucial: Push home state immediately on the back of this user interaction
-    if (!window.history.state?.home) {
-      window.history.pushState({ home: true }, "");
-    }
 
     if (window.history.state?.modal === "changeRole") {
       window.history.back();
@@ -969,7 +923,7 @@ export default function Index() {
           
           <button
             onClick={() => setIsRoomFinderOpen(true)}
-            className="flex items-center gap-2 rounded-full border border-blue-200 dark:border-blue-800/60 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-300 transition-all shadow-sm absolute top-[calc(100%+8px)] right-0"
+            className="flex items-center gap-2 rounded-full border border-blue-200 dark:border-blue-800/60 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-300 transition-all shadow-sm active:scale-95 absolute top-[calc(100%+8px)] right-0"
           >
             <MapPin className="h-3 w-3" />
             Room Finder
@@ -1235,7 +1189,7 @@ export default function Index() {
               key={`${entry.course}-${entry.slot}-${entry.section}-${i}`} 
               style={{ animationDelay: `${i * 50}ms` }}
               onClick={() => setSelectedEntry(entry)}
-              className="cursor-pointer transition-transform"
+              className="cursor-pointer transition-transform active:scale-[0.98]"
             >
               <ClassCard entry={entry} showSection={role !== "student"} />
             </div>
@@ -1778,13 +1732,13 @@ export default function Index() {
                   <div className="flex gap-2 w-full">
                     <button
                       onClick={() => setIsEditingBusSchedule(false)}
-                      className="flex-1 rounded-xl bg-secondary py-2.5 text-sm font-bold text-secondary-foreground shadow-sm transition-all hover:bg-secondary/80"
+                      className="flex-1 rounded-xl bg-secondary py-2.5 text-sm font-bold text-secondary-foreground shadow-sm transition-all hover:bg-secondary/80 active:scale-[0.98]"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={saveBusSchedule}
-                      className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold flex items-center justify-center gap-2 text-primary-foreground shadow-sm transition-all hover:opacity-90"
+                      className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold flex items-center justify-center gap-2 text-primary-foreground shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
                     >
                       <Save className="h-4 w-4" />
                       Save
@@ -1936,7 +1890,7 @@ export default function Index() {
               />
               <button
                 onClick={updateNotice}
-                className="w-full rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:opacity-90"
+                className="w-full rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
               >
                 Update Notice & Push Live
               </button>
@@ -2038,7 +1992,7 @@ export default function Index() {
 
                 <button
                   onClick={updateSettings}
-                  className="w-full rounded-xl bg-secondary py-2.5 text-sm font-bold text-secondary-foreground shadow-sm transition-all hover:bg-secondary/80"
+                  className="w-full rounded-xl bg-secondary py-2.5 text-sm font-bold text-secondary-foreground shadow-sm transition-all hover:bg-secondary/80 active:scale-[0.98]"
                 >
                   Save Configuration
                 </button>
@@ -2062,7 +2016,7 @@ export default function Index() {
                   />
                   <button
                     onClick={addAdminEmail}
-                    className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:opacity-90"
+                    className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
                   >
                     Add
                   </button>
