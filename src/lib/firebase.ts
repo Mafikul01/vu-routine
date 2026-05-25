@@ -10,7 +10,9 @@ import {
 import { 
   getAuth, 
   GoogleAuthProvider, 
-  signInWithPopup, 
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut, 
   onAuthStateChanged 
 } from "firebase/auth";
@@ -91,4 +93,4 @@ async function testConnection() {
 
 testConnection();
 
-export { signInWithPopup, signOut, onAuthStateChanged };
+export { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged };

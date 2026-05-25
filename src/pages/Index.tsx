@@ -24,7 +24,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { getGoogleSheetCsvUrlByGid, parseRoutineCsv, parseTeacherCsv } from "@/lib/parser";
 import { Teacher } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { auth, db, googleProvider, signInWithPopup, signOut, onAuthStateChanged, handleFirestoreError, OperationType } from "@/lib/firebase";
+import { auth, db, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, handleFirestoreError, OperationType } from "@/lib/firebase";
 import { User as FirebaseUser } from "firebase/auth";
 import { doc, onSnapshot, updateDoc, setDoc } from "firebase/firestore";
 
@@ -478,6 +478,16 @@ export default function Index() {
   }, [isSyncing, pullY, fetchDynamicRoutine]);
 
   useEffect(() => {
+    // Check for redirect result when returning from redirect flow
+    getRedirectResult(auth).then((result) => {
+      if (result?.user) {
+        toast.success("Logged In via Redirect");
+      }
+    }).catch((error) => {
+      console.error(error);
+      toast.error("Login Failed");
+    });
+
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       setUser(u);
     });
@@ -543,10 +553,17 @@ export default function Index() {
 
   const handleLogin = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
-      toast.success("Logged In");
+      // If we are inside the Flutter WebView, ThemeChannel will be defined.
+      // WebViews struggle with window.open (popup), so we use redirect.
+      // @ts-ignore
+      if (window.ThemeChannel || /wv|SM-|Pixel|Android/i.test(navigator.userAgent)) {
+        await signInWithRedirect(auth, googleProvider);
+      } else {
+        await signInWithPopup(auth, googleProvider);
+        toast.success("Logged In");
+      }
     } catch (e) {
-      toast.error("Login Failed");
+      toast.error("Login Failed. Try again.");
     }
   };
 
