@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# Welcome to Advance Routine App
 
-TODO: Document your project here
+
