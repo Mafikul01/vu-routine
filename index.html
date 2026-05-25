@@ -46,28 +46,48 @@
   
   <script>
     function sendThemeToApp() {
-      var isDark = document.documentElement.classList.contains('dark') || document.body.classList.contains('dark');
-      var theme = isDark ? 'dark' : 'light';
+      const isDark =
+        document.documentElement.classList.contains("dark") ||
+        document.body.classList.contains("dark");
+
+      const theme = isDark ? "dark" : "light";
+
+      // Safe check for Flutter WebView channel
       if (window.ThemeChannel && window.ThemeChannel.postMessage) {
         window.ThemeChannel.postMessage(theme);
       }
     }
 
-    window.addEventListener('load', sendThemeToApp);
+    // 🔥 Debounce to prevent spam calls
+    let themeTimeout = null;
 
-    var themeObserver = new MutationObserver(function(mutations) {
-      mutations.forEach(function(mutation) {
-        if (mutation.attributeName === 'class') {
-          sendThemeToApp();
-        }
-      });
+    function safeSendTheme() {
+      clearTimeout(themeTimeout);
+      themeTimeout = setTimeout(sendThemeToApp, 100);
+    }
+
+    // 1. Send theme on page load
+    window.addEventListener("load", safeSendTheme);
+
+    // 2. Observe HTML + BODY for class changes
+    const observer = new MutationObserver(() => {
+      safeSendTheme();
     });
 
-    themeObserver.observe(document.documentElement, { attributes: true });
-    
-    // Check when body exists
-    document.addEventListener("DOMContentLoaded", function() {
-      themeObserver.observe(document.body, { attributes: true });
+    // Start observing when DOM is ready
+    document.addEventListener("DOMContentLoaded", () => {
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+
+      observer.observe(document.body, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+
+      // initial check
+      safeSendTheme();
     });
   </script>
 </head>
