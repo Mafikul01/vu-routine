@@ -484,8 +484,7 @@ export default function Index() {
         toast.success("Logged In via Redirect");
       }
     }).catch((error) => {
-      console.error(error);
-      toast.error("Login Failed");
+      console.error("Redirect Error:", error);
     });
 
     const unsubAuth = onAuthStateChanged(auth, (u) => {
@@ -553,16 +552,21 @@ export default function Index() {
 
   const handleLogin = async () => {
     try {
-      // If we are inside the Flutter WebView, ThemeChannel will be defined.
-      // WebViews struggle with window.open (popup), so we use redirect.
       // @ts-ignore
-      if (window.ThemeChannel || /wv|SM-|Pixel|Android/i.test(navigator.userAgent)) {
-        await signInWithRedirect(auth, googleProvider);
-      } else {
+      const isWebView = window.ThemeChannel || 
+                        /wv|WebView/i.test(navigator.userAgent) || 
+                        (navigator.userAgent.includes('Android') && /Version\/\d+/.test(navigator.userAgent));
+
+      if (isWebView) {
+        // Use popup instead of redirect when inside Flutter WebView
         await signInWithPopup(auth, googleProvider);
-        toast.success("Logged In");
+        toast.success("Logged In Successfully");
+      } else {
+        // Normal browser — use redirect as usual
+        await signInWithRedirect(auth, googleProvider);
       }
     } catch (e) {
+      console.error("Login Error:", e);
       toast.error("Login Failed. Try again.");
     }
   };
