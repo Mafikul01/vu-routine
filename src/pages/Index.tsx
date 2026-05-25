@@ -1837,7 +1837,7 @@ export default function Index() {
               </ul>
             </div>
             <p className="pt-4 text-center text-[10px] text-muted-foreground font-bold tracking-widest uppercase opacity-30">
-              Version 1.0
+              Version 1.2
             </p>
           </div>
         </DialogContent>
