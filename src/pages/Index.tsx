@@ -2056,7 +2056,7 @@ export default function Index() {
             </div>
             
             <p className="pt-2 text-center text-[10px] text-muted-foreground font-bold tracking-widest uppercase opacity-30">
-              Version 1.1
+              Version 1.2
             </p>
           </div>
         </div>
