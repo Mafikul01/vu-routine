@@ -14,7 +14,8 @@ import {
   signInWithRedirect,
   getRedirectResult,
   signOut, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  signInWithCredential
 } from "firebase/auth";
 import firebaseConfig from "../../firebase-applet-config.json";
 
@@ -93,4 +94,4 @@ async function testConnection() {
 
 testConnection();
 
-export { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged };
+export { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, signInWithCredential, GoogleAuthProvider };

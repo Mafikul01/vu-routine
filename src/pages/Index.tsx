@@ -24,7 +24,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { getGoogleSheetCsvUrlByGid, parseRoutineCsv, parseTeacherCsv } from "@/lib/parser";
 import { Teacher } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { auth, db, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, handleFirestoreError, OperationType } from "@/lib/firebase";
+import { auth, db, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, handleFirestoreError, OperationType, signInWithCredential, GoogleAuthProvider } from "@/lib/firebase";
 import { User as FirebaseUser } from "firebase/auth";
 import { doc, onSnapshot, updateDoc, setDoc } from "firebase/firestore";
 
@@ -487,6 +487,27 @@ export default function Index() {
       console.error("Redirect Error:", error);
     });
 
+    const handleFlutterLoginEvent = async (event: any) => {
+      const idToken = event.detail?.idToken;
+      if (idToken) {
+        try {
+          const credential = GoogleAuthProvider.credential(null, idToken);
+          const result = await signInWithCredential(auth, credential);
+          if (result.user) {
+            toast.success("Logged In via Native App");
+            setTimeout(() => {
+              window.location.reload();
+            }, 500);
+          }
+        } catch (error) {
+          console.error("Flutter login integration error:", error);
+          toast.error("Native login integration failed");
+        }
+      }
+    };
+
+    window.addEventListener('flutterLogin', handleFlutterLoginEvent as EventListener);
+
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       setUser(u);
     });
@@ -537,6 +558,7 @@ export default function Index() {
       unsubAuth();
       unsubNotice();
       unsubSettings();
+      window.removeEventListener('flutterLogin', handleFlutterLoginEvent as EventListener);
     };
   }, []);
 
