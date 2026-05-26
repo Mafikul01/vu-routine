@@ -487,22 +487,52 @@ export default function Index() {
       console.error("Redirect Error:", error);
     });
 
+    // Check if Flutter already sent a token or event before React mounted
+    const pendingToken = (window as any).__pendingFlutterToken;
+    const pendingEvent = (window as any).__pendingFlutterLoginEvent;
+    if (pendingToken || pendingEvent) {
+      (window as any).__pendingFlutterToken = null;
+      (window as any).__pendingFlutterLoginEvent = false;
+
+      const triggerInitialAuth = async () => {
+        if (pendingToken) {
+          try {
+            const credential = GoogleAuthProvider.credential(null, pendingToken);
+            await signInWithCredential(auth, credential);
+            toast.success("Logged In via Native App");
+            return;
+          } catch (e) {
+            console.warn("Silent login failed, falling back to popup...", e);
+          }
+        }
+        try {
+          await signInWithPopup(auth, googleProvider);
+          toast.success("Logged In Successfully");
+        } catch (popupError) {
+          console.error("Flutter login fallback error:", popupError);
+        }
+      };
+      triggerInitialAuth();
+    }
+
     const handleFlutterLoginEvent = async (event: any) => {
       const idToken = event.detail?.idToken;
       if (idToken) {
         try {
           const credential = GoogleAuthProvider.credential(null, idToken);
-          const result = await signInWithCredential(auth, credential);
-          if (result.user) {
-            toast.success("Logged In via Native App");
-            setTimeout(() => {
-              window.location.reload();
-            }, 500);
-          }
+          await signInWithCredential(auth, credential);
+          toast.success("Logged In via Native App");
+          return;
         } catch (error) {
-          console.error("Flutter login integration error:", error);
-          toast.error("Native login integration failed");
+          console.warn("Native integration silent login failed, attempting popup fallback...", error);
         }
+      }
+
+      try {
+        await signInWithPopup(auth, googleProvider);
+        toast.success("Logged In Successfully");
+      } catch (error) {
+        console.error("Flutter login fallback error:", error);
       }
     };
 
