@@ -595,6 +595,8 @@ export default function Index() {
     };
   }, []);
 
+  const adminEmailsStr = (adminSettings.adminEmails || []).join(',');
+
   // Real-time listener for current user's role to grant instant Admin access
   useEffect(() => {
     if (!user) {
@@ -609,8 +611,10 @@ export default function Index() {
       return;
     }
 
+    const currentAdminEmails = adminEmailsStr ? adminEmailsStr.split(',') : [];
+
     // Set initial state based on static list fallback
-    const isGlobalInit = (adminSettings.adminEmails || []).some(e => e.trim().toLowerCase() === email);
+    const isGlobalInit = currentAdminEmails.some(e => e.trim().toLowerCase() === email);
     setIsAdmin(isGlobalInit);
 
     // Subscribe to the logged-in user's profile inside the users collection
@@ -619,10 +623,10 @@ export default function Index() {
       if (snap.exists()) {
         const uData = snap.data();
         const isDbAdmin = uData?.role?.trim().toLowerCase() === "admin";
-        const isGlobal = (adminSettings.adminEmails || []).some(e => e.trim().toLowerCase() === email);
+        const isGlobal = currentAdminEmails.some(e => e.trim().toLowerCase() === email);
         setIsAdmin(isDbAdmin || isGlobal);
       } else {
-        const isGlobal = (adminSettings.adminEmails || []).some(e => e.trim().toLowerCase() === email);
+        const isGlobal = currentAdminEmails.some(e => e.trim().toLowerCase() === email);
         setIsAdmin(isGlobal);
       }
     }, (error) => {
@@ -630,7 +634,7 @@ export default function Index() {
     });
 
     return () => unsubUserDoc();
-  }, [user, adminSettings.adminEmails]);
+  }, [user, adminEmailsStr]);
 
   useEffect(() => {
     if (!isAdmin) {
