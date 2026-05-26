@@ -546,12 +546,20 @@ export default function Index() {
 
     const unsubNotice = onSnapshot(doc(db, "notices", "current"), (s) => {
       if (s.exists()) {
-        const data = s.data() as { text: string; active: boolean; type?: "normal" | "important"; updatedAt?: { toMillis: () => number } };
+        const data = s.data() as { text: string; active: boolean; type?: "normal" | "important"; updatedAt?: number | { toMillis: () => number } };
+        
+        let parsedUpdatedAt = Date.now();
+        if (typeof data.updatedAt === 'number') {
+           parsedUpdatedAt = data.updatedAt;
+        } else if (data.updatedAt?.toMillis) {
+           parsedUpdatedAt = data.updatedAt.toMillis();
+        }
+
         setNotice({
           text: data.text,
           active: data.active,
           type: data.type || "normal",
-          updatedAt: data.updatedAt?.toMillis ? data.updatedAt.toMillis() : Date.now()
+          updatedAt: parsedUpdatedAt
         });
         setNewNoticeText(data.text);
         setNewNoticeType(data.type || "normal");
@@ -862,7 +870,7 @@ export default function Index() {
         text: newNoticeText,
         active: true,
         type: newNoticeType,
-        updatedAt: serverTimestamp()
+        updatedAt: Date.now()
       });
       toast.success("Notice Updated");
     } catch (e) {
@@ -874,7 +882,7 @@ export default function Index() {
     try {
       await updateDoc(doc(db, "notices", "current"), {
         active: !notice.active,
-        updatedAt: serverTimestamp()
+        updatedAt: Date.now()
       });
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, "notices/current");

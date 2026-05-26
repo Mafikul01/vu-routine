@@ -78,7 +78,7 @@ service cloud.firestore {
              data.active is bool &&
              (!('type' in data) || data.type in ['normal', 'important']) &&
              (!('createdAt' in data) || data.createdAt is timestamp) &&
-             (!('updatedAt' in data) || data.updatedAt is timestamp);
+             (!('updatedAt' in data) || data.updatedAt is timestamp || data.updatedAt is number);
     }
 
     function isValidUser(data) {
