@@ -546,7 +546,7 @@ export default function Index() {
 
     const unsubNotice = onSnapshot(doc(db, "notices", "current"), (s) => {
       if (s.exists()) {
-        const data = s.data() as { text: string; active: boolean; type?: "normal" | "important"; updatedAt?: any };
+        const data = s.data() as { text: string; active: boolean; type?: "normal" | "important"; updatedAt?: { toMillis: () => number } };
         setNotice({
           text: data.text,
           active: data.active,
@@ -2138,7 +2138,7 @@ export default function Index() {
               </ul>
             </div>
             <p className="pt-4 text-center text-[10px] text-muted-foreground font-bold tracking-widest uppercase opacity-30">
-              Version 1.2
+              Version 1.3
             </p>
           </div>
         </DialogContent>
@@ -2405,7 +2405,7 @@ export default function Index() {
             </div>
             
             <p className="pt-2 text-center text-[10px] text-muted-foreground font-bold tracking-widest uppercase opacity-30">
-              Version 1.2
+              Version 1.3
             </p>
           </div>
         </div>

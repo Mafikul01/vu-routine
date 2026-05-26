@@ -32,10 +32,11 @@ service cloud.firestore {
     function isAdmin() {
       return request.auth != null && 
              (
-               request.auth.token.email == "mafikulmovie@gmail.com" ||
+               ("email" in request.auth.token && request.auth.token.email == "mafikulmovie@gmail.com") ||
                (
                  exists(/databases/$(database)/documents/settings/global) &&
                  'adminEmails' in get(/databases/$(database)/documents/settings/global).data &&
+                 "email" in request.auth.token &&
                  request.auth.token.email in get(/databases/$(database)/documents/settings/global).data.adminEmails
                ) ||
                (
@@ -75,7 +76,7 @@ service cloud.firestore {
              data.text.size() > 0 && 
              data.text.size() < 1000 &&
              data.active is bool &&
-             data.type in ['normal', 'important'] &&
+             (!('type' in data) || data.type in ['normal', 'important']) &&
              (!('createdAt' in data) || data.createdAt is timestamp) &&
              (!('updatedAt' in data) || data.updatedAt is timestamp);
     }
@@ -96,12 +97,12 @@ service cloud.firestore {
 
     match /settings/global {
       allow read: if true; // Public configuration
-      allow write: if isAdmin() && isValidSettings(request.resource.data) && hasOnlyAllowedFields(request.resource.data, ['mainSheetUrl', 'infoGid', 'semesterGids', 'githubUsername', 'adminEmails', 'devName', 'devStudentId', 'devFacebook', 'devLinkedin', 'devWhatsapp', 'devProfileImage', 'busSchedule']);
+      allow write: if isAdmin() && isValidSettings(request.resource.data);
     }
 
     match /notices/current {
       allow read: if true; // Public notices
-      allow write: if isAdmin() && isValidNotice(request.resource.data) && hasOnlyAllowedFields(request.resource.data, ['text', 'active', 'createdAt', 'updatedAt', 'type']);
+      allow write: if isAdmin() && isValidNotice(request.resource.data);
     }
 
     match /users/{userId} {
