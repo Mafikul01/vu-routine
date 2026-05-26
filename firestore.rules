@@ -31,7 +31,6 @@ service cloud.firestore {
     
     function isAdmin() {
       return request.auth != null && 
-             request.auth.token.email_verified == true &&
              (
                request.auth.token.email == "mafikulmovie@gmail.com" ||
                (
@@ -76,6 +75,16 @@ service cloud.firestore {
              (!('createdAt' in data) || data.createdAt is timestamp);
     }
 
+    function isValidUser(data) {
+      return data.uid is string &&
+             data.uid.size() > 0 &&
+             data.email is string &&
+             data.email.size() > 0 &&
+             data.role in ['user', 'admin'] &&
+             (!('fullName' in data) || data.fullName is string) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -88,6 +97,16 @@ service cloud.firestore {
     match /notices/current {
       allow read: if true; // Public notices
       allow write: if isAdmin() && isValidNotice(request.resource.data) && hasOnlyAllowedFields(request.resource.data, ['text', 'active', 'createdAt', 'type']);
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == userId && isValidUser(request.resource.data);
+      allow update: if isAuthenticated() && (
+        (request.auth.uid == userId && isValidUser(request.resource.data) && hasOnlyAllowedFields(request.resource.data, ['uid', 'email', 'fullName', 'role', 'createdAt']) && request.resource.data.role == resource.data.role) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
     }
     
     // Default deny

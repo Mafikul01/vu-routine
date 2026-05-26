@@ -17,16 +17,16 @@ import {
   ClassEntry,
   routineData as staticRoutineData,
 } from "@/data/routineData";
-import { GraduationCap, User, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, CodeXml, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote, FileText, Bus, Edit2, Save } from "lucide-react";
+import { GraduationCap, User, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, CodeXml, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote, FileText, Bus, Edit2, Save, Loader2 } from "lucide-react";
 import { useTheme } from "@/components/ThemeContext";
 import { toast } from "@/components/ui/sonner";
 import { motion, AnimatePresence } from "motion/react";
 import { getGoogleSheetCsvUrlByGid, parseRoutineCsv, parseTeacherCsv } from "@/lib/parser";
 import { Teacher } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { auth, db, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, handleFirestoreError, OperationType, signInWithCredential, GoogleAuthProvider } from "@/lib/firebase";
+import { auth, db, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, handleFirestoreError, OperationType, signInWithCredential, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "@/lib/firebase";
 import { User as FirebaseUser } from "firebase/auth";
-import { doc, onSnapshot, updateDoc, setDoc } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, setDoc, collection, getDocs, serverTimestamp, getDoc } from "firebase/firestore";
 
 import {
   Select,
@@ -204,6 +204,25 @@ export default function Index() {
     adminEmails: ["mafikulmovie@gmail.com"],
     busSchedule: DEFAULT_BUS_SCHEDULE
   });
+
+  // Custom Login & Sign-Up Dialogue States
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const [authTab, setAuthTab] = useState<"signin" | "signup">("signin");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authFullName, setAuthFullName] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+
+  // Users from Database State
+  interface DbUser {
+    uid: string;
+    email: string;
+    fullName: string;
+    role: string;
+    createdAt?: unknown;
+  }
+
+  const [allUsers, setAllUsers] = useState<DbUser[]>([]);
 
   // Notice Dismissal state
   const [hasDismissedNotice, setHasDismissedNotice] = useState(false);
@@ -478,69 +497,51 @@ export default function Index() {
   }, [isSyncing, pullY, fetchDynamicRoutine]);
 
   useEffect(() => {
-    // Check for redirect result when returning from redirect flow
-    getRedirectResult(auth).then((result) => {
-      if (result?.user) {
-        toast.success("Logged In via Redirect");
-      }
-    }).catch((error) => {
-      console.error("Redirect Error:", error);
-    });
-
-    // Check if Flutter already sent a token or event before React mounted
-    const pendingToken = (window as any).__pendingFlutterToken;
-    const pendingEvent = (window as any).__pendingFlutterLoginEvent;
-    if (pendingToken || pendingEvent) {
-      (window as any).__pendingFlutterToken = null;
-      (window as any).__pendingFlutterLoginEvent = false;
-
-      const triggerInitialAuth = async () => {
-        if (pendingToken) {
-          try {
-            const credential = GoogleAuthProvider.credential(null, pendingToken);
-            await signInWithCredential(auth, credential);
-            toast.success("Logged In via Native App");
-            return;
-          } catch (e) {
-            console.warn("Silent login failed, falling back to popup...", e);
-          }
-        }
-        try {
-          await signInWithPopup(auth, googleProvider);
-          toast.success("Logged In Successfully");
-        } catch (popupError) {
-          console.error("Flutter login fallback error:", popupError);
-        }
-      };
-      triggerInitialAuth();
-    }
-
-    const handleFlutterLoginEvent = async (event: any) => {
-      const idToken = event.detail?.idToken;
-      if (idToken) {
-        try {
-          const credential = GoogleAuthProvider.credential(null, idToken);
-          await signInWithCredential(auth, credential);
-          toast.success("Logged In via Native App");
-          return;
-        } catch (error) {
-          console.warn("Native integration silent login failed, attempting popup fallback...", error);
-        }
-      }
-
+    const handleFlutterLogin = async (event: Event) => {
+      const customEvent = event as CustomEvent<{ idToken?: string }>;
+      const idToken = customEvent.detail?.idToken;
+      if (!idToken) return;
       try {
-        await signInWithPopup(auth, googleProvider);
-        toast.success("Logged In Successfully");
+        const credential = GoogleAuthProvider.credential(null, idToken);
+        await signInWithCredential(auth, credential);
       } catch (error) {
-        console.error("Flutter login fallback error:", error);
+        const authErr = error as { code?: string; message?: string };
+        console.error("flutterLogin error code:", authErr.code, authErr.message);
       }
     };
 
-    window.addEventListener('flutterLogin', handleFlutterLoginEvent as EventListener);
+    // Capture token buffered before React mounted
+    const win = window as unknown as { __pendingFlutterToken?: string | null };
+    const pendingToken = win.__pendingFlutterToken;
+    if (pendingToken) {
+      win.__pendingFlutterToken = null;
+      handleFlutterLogin({ detail: { idToken: pendingToken } } as unknown as Event);
+    }
 
-    const unsubAuth = onAuthStateChanged(auth, (u) => {
+    window.addEventListener('flutterLogin', handleFlutterLogin as EventListener);
+
+    const unsubAuth = onAuthStateChanged(auth, async (u) => {
       setUser(u);
+      if (u) {
+        try {
+          const userRef = doc(db, "users", u.uid);
+          const userSnap = await getDoc(userRef);
+          if (!userSnap.exists()) {
+            await setDoc(userRef, {
+              uid: u.uid,
+              email: u.email || "",
+              fullName: u.displayName || u.email?.split("@")[0] || "User",
+              role: "user",
+              createdAt: serverTimestamp()
+            });
+          }
+        } catch (e) {
+          console.warn("Could not sync user profile:", e);
+        }
+      }
     });
+
+    getRedirectResult(auth).catch(console.error);
 
     const unsubNotice = onSnapshot(doc(db, "notices", "current"), (s) => {
       if (s.exists()) {
@@ -585,10 +586,10 @@ export default function Index() {
     });
 
     return () => {
+      window.removeEventListener('flutterLogin', handleFlutterLogin as EventListener);
       unsubAuth();
       unsubNotice();
       unsubSettings();
-      window.removeEventListener('flutterLogin', handleFlutterLoginEvent as EventListener);
     };
   }, []);
 
@@ -603,32 +604,180 @@ export default function Index() {
     }
   }, [user, adminSettings.adminEmails]);
 
-  const handleLogin = async () => {
+  useEffect(() => {
+    if (!isAdmin) {
+      setAllUsers([]);
+      return;
+    }
+    const unsubUsers = onSnapshot(collection(db, "users"), (snapshot) => {
+      const usersList: DbUser[] = [];
+      snapshot.forEach((snapDoc) => {
+        usersList.push(snapDoc.data() as DbUser);
+      });
+      setAllUsers(usersList);
+    }, (error) => {
+      console.warn("Could not listen to users:", error);
+    });
+    return () => unsubUsers();
+  }, [isAdmin]);
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authEmail || !authPassword || !authFullName) {
+      toast.error("Please fill in all fields.");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(authEmail)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    if (authPassword.length < 6) {
+      toast.error("Password should be at least 6 characters.");
+      return;
+    }
+    setAuthLoading(true);
     try {
-      // @ts-ignore
-      if (window.FlutterLogin) {
-        // @ts-ignore
-        window.FlutterLogin.postMessage('google');
+      const userCredential = await createUserWithEmailAndPassword(auth, authEmail, authPassword);
+      const u = userCredential.user;
+      
+      // Update the user's display name and create their Firestore database record in the background.
+      // This prevents slower network roundtrips for Firestore from delaying the UI response,
+      // allowing the dialog to close instantaneously.
+      updateProfile(u, { displayName: authFullName })
+        .then(() => {
+          const userRef = doc(db, "users", u.uid);
+          return setDoc(userRef, {
+            uid: u.uid,
+            email: authEmail,
+            fullName: authFullName,
+            role: "user",
+            createdAt: serverTimestamp()
+          });
+        })
+        .catch((err) => {
+          console.warn("Background profile details creation warning:", err);
+        });
+
+      toast.success("Account Created Successfully!");
+      setIsAuthDialogOpen(false);
+      setAuthEmail("");
+      setAuthPassword("");
+      setAuthFullName("");
+    } catch (error: unknown) {
+      console.error("Signup error:", error);
+      const authErr = error as { code?: string; message?: string };
+      if (authErr.code === "auth/email-already-in-use") {
+        toast.error("This email is already in use. Please sign in instead.");
+      } else if (authErr.code === "auth/weak-password") {
+        toast.error("Password should be at least 6 characters.");
+      } else if (authErr.code === "auth/invalid-email") {
+        toast.error("Please enter a valid email address.");
+      } else if (authErr.code === "auth/operation-not-allowed") {
+        toast.error("Email/Password provider is not enabled in Firebase Authentication. Please enable it in your Firebase Console under 'Sign-in method' or use 'Continue with Google'.");
+      } else {
+        toast.error(authErr.message || "Failed to create account.");
+      }
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleCustomLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authEmail || !authPassword) {
+      toast.error("Please fill in email and password.");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(authEmail)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    setAuthLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, authEmail, authPassword);
+      toast.success("Logged In Successfully!");
+      setIsAuthDialogOpen(false);
+      setAuthEmail("");
+      setAuthPassword("");
+    } catch (error: unknown) {
+      console.error("Login error:", error);
+      const authErr = error as { code?: string; message?: string };
+      if (authErr.code === "auth/operation-not-allowed" || authErr.code === "auth/configuration-not-found") {
+        toast.error("Email/Password provider is not enabled in your Firebase console. Please enable it under Auth -> Sign-in methods.");
+      } else if (authErr.code === "auth/invalid-email") {
+        toast.error("Please enter a valid email address.");
+      } else if (
+        authErr.code === "auth/wrong-password" ||
+        authErr.code === "auth/user-not-found" ||
+        authErr.code === "auth/invalid-credential"
+      ) {
+        toast.error("Incorrect email or password.");
+      } else {
+        toast.error(authErr.message || "Invalid credentials.");
+      }
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleGoogleSignInFromDialog = async () => {
+    try {
+      const win = window as unknown as { FlutterLogin?: { postMessage: (msg: string) => void } };
+      if (win.FlutterLogin) {
+        win.FlutterLogin.postMessage('google');
+        setIsAuthDialogOpen(false);
         return;
       }
-
-      // Try signInWithPopup first, as it is the most reliable flow for both desktop/mobile browsers and iframes.
-      try {
-        await signInWithPopup(auth, googleProvider);
-        toast.success("Logged In Successfully");
-      } catch (popupError: any) {
-        console.warn("Popup sign-in failed/blocked; attempting redirect fallback...", popupError);
-        // Fallback to signInWithRedirect if popup is blocked or not supported
-        if (popupError?.code === "auth/popup-blocked" || popupError?.code === "auth/operation-not-supported-in-this-environment") {
-          await signInWithRedirect(auth, googleProvider);
-        } else {
-          throw popupError;
-        }
+      await signInWithPopup(auth, googleProvider);
+      toast.success("Logged In Successfully");
+      setIsAuthDialogOpen(false);
+    } catch (popupError) {
+      const err = popupError as { code?: string; message?: string };
+      console.warn("Popup sign-in failed/blocked; attempting redirect fallback...", err);
+      if (err?.code === "auth/popup-blocked" || err?.code === "auth/operation-not-supported-in-this-environment") {
+        await signInWithRedirect(auth, googleProvider);
+      } else {
+        toast.error("Google login failed.");
       }
-    } catch (e) {
-      console.error("Login Error:", e);
-      toast.error("Login Failed. Try again.");
     }
+  };
+
+  const toggleUserAdminRole = async (targetUser: { uid: string; email: string; role: string; fullName: string }) => {
+    const rootAdmin = "mafikulmovie@gmail.com";
+    if (targetUser.email === rootAdmin) {
+      toast.error("Root Admin cannot be demoted.");
+      return;
+    }
+    const newRole = targetUser.role === "admin" ? "user" : "admin";
+    const currentEmails = adminSettings.adminEmails || [rootAdmin];
+    let updatedEmails = [...currentEmails];
+    if (newRole === "admin") {
+      if (!updatedEmails.includes(targetUser.email)) {
+        updatedEmails.push(targetUser.email);
+      }
+    } else {
+      updatedEmails = updatedEmails.filter(e => e !== targetUser.email);
+    }
+    try {
+      await setDoc(doc(db, "users", targetUser.uid), {
+        ...targetUser,
+        role: newRole
+      });
+      await setDoc(doc(db, "settings", "global"), {
+        ...adminSettings,
+        adminEmails: updatedEmails
+      });
+      toast.success(`User role updated to ${newRole}`);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, `users/${targetUser.uid}`);
+    }
+  };
+
+  const handleLogin = () => {
+    setAuthTab("signin");
+    setIsAuthDialogOpen(true);
   };
 
   const handleLogout = async () => {
@@ -2130,6 +2279,54 @@ export default function Index() {
               </div>
             </div>
 
+            {/* Registered Users & Roles Management */}
+            <div className="space-y-3 bg-secondary/10 p-4 rounded-2xl border border-border/50">
+              <h4 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                <Users className="h-4 w-4" />
+                Registered Users & Roles
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                These are accounts created through our register system. Give them the Admin role to allow them to edit sheet links & manage notices.
+              </p>
+              
+              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                {allUsers.length === 0 ? (
+                  <p className="text-xs italic text-center p-4 text-muted-foreground">No registered users yet</p>
+                ) : (
+                  allUsers.map((u) => {
+                    const isTargetAdmin = u.role === "admin";
+                    const isRoot = u.email === "mafikulmovie@gmail.com";
+                    return (
+                      <div key={u.uid} className="flex items-center justify-between gap-2.5 rounded-xl bg-secondary/50 p-3 text-sm">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold truncate text-foreground">{u.fullName}</p>
+                          <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {isRoot ? (
+                            <span className="text-[10px] font-bold uppercase bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2.5 py-1 rounded-full">
+                              Root Admin
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => toggleUserAdminRole(u)}
+                              className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase transition-all active:scale-[0.98] ${
+                                isTargetAdmin
+                                  ? "bg-indigo-150 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400"
+                                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300"
+                              }`}
+                            >
+                              {isTargetAdmin ? "Admin" : "Student"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
             <div className="rounded-xl bg-orange-50 p-4 border border-orange-100 dark:bg-orange-950/20 dark:border-orange-900/30">
               <p className="text-xs text-orange-800 dark:text-orange-300">
                 <strong>Pro Tip:</strong> All changes made here are applied in real-time to all users without needing a code redeploy.
@@ -2142,6 +2339,128 @@ export default function Index() {
           </div>
         </div>
       </DialogContent>
+      </Dialog>
+
+      {/* Custom Auth Dialog (Email/Password Sign-In & Registration) */}
+      <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="p-6 pb-2 text-center">
+            <DialogTitle className="font-heading text-2xl font-bold flex flex-col items-center gap-2">
+              <GraduationCap className="h-10 w-10 text-primary animate-pulse" />
+              <span>VU Routine Accounts</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto px-6 pb-8">
+            {/* Tab Selector */}
+            <div className="flex border-b mb-6 border-border">
+              <button
+                type="button"
+                className={`flex-1 pb-3 text-sm font-semibold border-b-2 transition-all ${authTab === "signin" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                onClick={() => {
+                  setAuthTab("signin");
+                  setAuthEmail("");
+                  setAuthPassword("");
+                  setAuthFullName("");
+                }}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                className={`flex-1 pb-3 text-sm font-semibold border-b-2 transition-all ${authTab === "signup" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                onClick={() => {
+                  setAuthTab("signup");
+                  setAuthEmail("");
+                  setAuthPassword("");
+                  setAuthFullName("");
+                }}
+              >
+                Sign Up
+              </button>
+            </div>
+
+            <form onSubmit={authTab === "signin" ? handleCustomLogin : handleRegister} className="space-y-4">
+              {authTab === "signup" && (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="E.g. John Doe"
+                    value={authFullName}
+                    onChange={(e) => setAuthFullName(e.target.value)}
+                    className="w-full rounded-xl border bg-card p-2.5 text-sm outline-none focus:border-primary"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="name@example.com"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  className="w-full rounded-xl border bg-card p-2.5 text-sm outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Password</label>
+                <input
+                  type="password"
+                  required
+                  minLength={authTab === "signup" ? 6 : undefined}
+                  placeholder={authTab === "signup" ? "At least 6 characters" : "••••••••"}
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  className="w-full rounded-xl border bg-card p-2.5 text-sm outline-none focus:border-primary"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={authLoading}
+                className="w-full h-12 rounded-xl bg-primary text-sm font-bold text-primary-foreground shadow-sm transition-all hover:opacity-95 active:scale-[0.98] disabled:bg-primary/95 flex items-center justify-center gap-2"
+              >
+                {authLoading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin text-primary-foreground" />
+                    <span>Please wait...</span>
+                  </>
+                ) : (
+                  authTab === "signin" ? "Sign In" : "Create Account"
+                )}
+              </button>
+            </form>
+
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-border"></div>
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">Or</span>
+              </div>
+            </div>
+
+            {/* Google Login Option Inside Dialog */}
+            <button
+              type="button"
+              onClick={handleGoogleSignInFromDialog}
+              className="w-full flex items-center justify-center gap-2 rounded-xl border bg-card px-4 py-3 text-sm font-semibold text-foreground transition-all hover:bg-secondary active:scale-[0.98]"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22c-.22-.66-.35-1.36-.35-2.09z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+              <span>Continue with Google</span>
+            </button>
+          </div>
+        </DialogContent>
       </Dialog>
     </div>
     {/* Floating AI Assistant Widget */}

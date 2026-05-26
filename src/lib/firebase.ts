@@ -15,9 +15,19 @@ import {
   getRedirectResult,
   signOut, 
   onAuthStateChanged,
-  signInWithCredential
+  signInWithCredential,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile
 } from "firebase/auth";
-import firebaseConfig from "../../firebase-applet-config.json";
+const firebaseConfig = {
+  apiKey: "AIzaSyANespMmSAH1myAyzpkgpLpOPtH3dmJnDQ",
+  authDomain: "gen-lang-client-0796986418.firebaseapp.com",
+  projectId: "gen-lang-client-0796986418",
+  storageBucket: "gen-lang-client-0796986418.firebasestorage.app",
+  messagingSenderId: "453607479876",
+  appId: "1:453607479876:web:24311e6b4740f63d80ba11"
+};
 
 // Types for error handling
 export enum OperationType {
@@ -51,7 +61,7 @@ interface FirestoreErrorInfo {
 const app = initializeApp(firebaseConfig);
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
-}, firebaseConfig.firestoreDatabaseId);
+});
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
@@ -94,4 +104,15 @@ async function testConnection() {
 
 testConnection();
 
-export { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, signInWithCredential, GoogleAuthProvider };
+export { 
+  signInWithPopup, 
+  signInWithRedirect, 
+  getRedirectResult, 
+  signOut, 
+  onAuthStateChanged, 
+  signInWithCredential, 
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile
+};

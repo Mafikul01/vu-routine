@@ -1,6 +1,14 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      window.__pendingFlutterToken = null;
+      window.addEventListener('flutterLogin', function(e) {
+        if (e.detail && e.detail.idToken) {
+          window.__pendingFlutterToken = e.detail.idToken;
+        }
+      });
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>VU Routine & Finder</title>
@@ -44,17 +52,8 @@
   <meta name="twitter:description" content="View your class routine">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=search_insights" />
   
-  <script>
-    window.__pendingFlutterToken = null;
-    window.__pendingFlutterLoginEvent = false;
-    window.addEventListener('flutterLogin', function(event) {
-      window.__pendingFlutterLoginEvent = true;
-      if (event && event.detail && event.detail.idToken) {
-        window.__pendingFlutterToken = event.detail.idToken;
-      }
-    });
-
-    function sendThemeToApp() {
+    <script>
+      function sendThemeToApp() {
       const isDark =
         document.documentElement.classList.contains("dark") ||
         document.body.classList.contains("dark");
