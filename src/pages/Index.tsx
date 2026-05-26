@@ -563,9 +563,10 @@ export default function Index() {
   }, []);
 
   useEffect(() => {
-    if (user && user.emailVerified) {
-      const isRoot = user.email === "mafikulmovie@gmail.com";
-      const isGlobal = (adminSettings.adminEmails || []).includes(user.email || "");
+    if (user) {
+      const email = user.email?.toLowerCase();
+      const isRoot = email === "mafikulmovie@gmail.com";
+      const isGlobal = (adminSettings.adminEmails || []).some(e => e.toLowerCase() === email);
       setIsAdmin(isRoot || isGlobal);
     } else {
       setIsAdmin(false);
@@ -581,18 +582,18 @@ export default function Index() {
         return;
       }
 
-      // @ts-ignore
-      const isWebView = window.ThemeChannel || 
-                        /wv|WebView/i.test(navigator.userAgent) || 
-                        (navigator.userAgent.includes('Android') && /Version\/\d+/.test(navigator.userAgent));
-
-      if (isWebView) {
-        // Use popup instead of redirect when inside Flutter WebView
+      // Try signInWithPopup first, as it is the most reliable flow for both desktop/mobile browsers and iframes.
+      try {
         await signInWithPopup(auth, googleProvider);
         toast.success("Logged In Successfully");
-      } else {
-        // Normal browser — use redirect as usual
-        await signInWithRedirect(auth, googleProvider);
+      } catch (popupError: any) {
+        console.warn("Popup sign-in failed/blocked; attempting redirect fallback...", popupError);
+        // Fallback to signInWithRedirect if popup is blocked or not supported
+        if (popupError?.code === "auth/popup-blocked" || popupError?.code === "auth/operation-not-supported-in-this-environment") {
+          await signInWithRedirect(auth, googleProvider);
+        } else {
+          throw popupError;
+        }
       }
     } catch (e) {
       console.error("Login Error:", e);
