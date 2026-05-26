@@ -193,6 +193,11 @@ export default function Index() {
     semesterGids?: Record<string, string>,
     githubUsername?: string,
     devProfileImage?: string,
+    devName?: string,
+    devStudentId?: string,
+    devFacebook?: string,
+    devLinkedin?: string,
+    devWhatsapp?: string,
     adminEmails?: string[],
     busSchedule?: BusTrip[]
   }>({ 
@@ -201,6 +206,11 @@ export default function Index() {
     semesterGids: SEMESTER_GIDS,
     githubUsername: "mafikul01",
     devProfileImage: "",
+    devName: "Mafikul Islam",
+    devStudentId: "232311070",
+    devFacebook: "mafikul01",
+    devLinkedin: "mafikul01",
+    devWhatsapp: "+8801788302771",
     adminEmails: ["mafikulmovie@gmail.com"],
     busSchedule: DEFAULT_BUS_SCHEDULE
   });
@@ -544,6 +554,14 @@ export default function Index() {
 
     getRedirectResult(auth).catch(console.error);
 
+    return () => {
+      window.removeEventListener('flutterLogin', handleFlutterLogin as EventListener);
+      unsubAuth();
+    };
+  }, []);
+
+  // Separate listener for live notifications
+  useEffect(() => {
     const unsubNotice = onSnapshot(doc(db, "notices", "current"), (s) => {
       if (s.exists()) {
         const data = s.data() as { text: string; active: boolean; type?: "normal" | "important"; updatedAt?: number | { toMillis: () => number } };
@@ -564,8 +582,15 @@ export default function Index() {
         setNewNoticeText(data.text);
         setNewNoticeType(data.type || "normal");
       }
+    }, (error) => {
+      console.warn("Notice sync failed:", error);
     });
+    
+    return () => unsubNotice();
+  }, []);
 
+  // Separate listener for live admin settings
+  useEffect(() => {
     const unsubSettings = onSnapshot(doc(db, "settings", "global"), (s) => {
       if (s.exists()) {
         const data = s.data() as { 
@@ -582,25 +607,22 @@ export default function Index() {
           busSchedule?: BusTrip[];
         };
         setAdminSettings(prev => ({ ...prev, ...data }));
-        setNewMainSheetUrl(data.mainSheetUrl);
-        setNewInfoGid(data.infoGid);
-        setNewGithubUsername(data.githubUsername || "mafikul01");
-        setNewProfileImage(data.devProfileImage || "");
-        setDevName(data.devName || "Mafikul Islam");
-        setDevStudentId(data.devStudentId || "232311070");
-        setDevFacebook(data.devFacebook || "mafikul01");
-        setDevLinkedin(data.devLinkedin || "mafikul01");
-        setDevWhatsapp(data.devWhatsapp || "01788302771");
-        setNewBusSchedule(data.busSchedule || DEFAULT_BUS_SCHEDULE);
+        if (data.mainSheetUrl) setNewMainSheetUrl(data.mainSheetUrl);
+        if (data.infoGid) setNewInfoGid(data.infoGid);
+        if (data.githubUsername) setNewGithubUsername(data.githubUsername);
+        if (data.devProfileImage) setNewProfileImage(data.devProfileImage);
+        if (data.devName) setDevName(data.devName);
+        if (data.devStudentId) setDevStudentId(data.devStudentId);
+        if (data.devFacebook) setDevFacebook(data.devFacebook);
+        if (data.devLinkedin) setDevLinkedin(data.devLinkedin);
+        if (data.devWhatsapp) setDevWhatsapp(data.devWhatsapp);
+        if (data.busSchedule) setNewBusSchedule(data.busSchedule);
       }
+    }, (error) => {
+      console.warn("Settings sync failed:", error);
     });
 
-    return () => {
-      window.removeEventListener('flutterLogin', handleFlutterLogin as EventListener);
-      unsubAuth();
-      unsubNotice();
-      unsubSettings();
-    };
+    return () => unsubSettings();
   }, []);
 
   const adminEmailsStr = (adminSettings.adminEmails || []).join(',');
@@ -880,10 +902,12 @@ export default function Index() {
 
   const toggleNotice = async () => {
     try {
-      await updateDoc(doc(db, "notices", "current"), {
+      await setDoc(doc(db, "notices", "current"), {
+        text: notice.text || "Empty Notice",
+        type: notice.type || "normal",
         active: !notice.active,
         updatedAt: Date.now()
-      });
+      }, { merge: true });
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, "notices/current");
     }
