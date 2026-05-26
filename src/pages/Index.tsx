@@ -553,6 +553,13 @@ export default function Index() {
   const handleLogin = async () => {
     try {
       // @ts-ignore
+      if (window.FlutterLogin) {
+        // @ts-ignore
+        window.FlutterLogin.postMessage('google');
+        return;
+      }
+
+      // @ts-ignore
       const isWebView = window.ThemeChannel || 
                         /wv|WebView/i.test(navigator.userAgent) || 
                         (navigator.userAgent.includes('Android') && /Version\/\d+/.test(navigator.userAgent));
