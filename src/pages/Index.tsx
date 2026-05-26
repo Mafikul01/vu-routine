@@ -17,7 +17,7 @@ import {
   ClassEntry,
   routineData as staticRoutineData,
 } from "@/data/routineData";
-import { GraduationCap, User, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, CodeXml, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote, FileText, Bus, Edit2, Save, Loader2 } from "lucide-react";
+import { GraduationCap, User, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, CodeXml, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote, FileText, Bus, Edit2, Save, Loader2, Eye, EyeOff } from "lucide-react";
 import { useTheme } from "@/components/ThemeContext";
 import { toast } from "@/components/ui/sonner";
 import { motion, AnimatePresence } from "motion/react";
@@ -186,7 +186,7 @@ export default function Index() {
   // Firebase / Admin states
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [notice, setNotice] = useState<{ text: string, active: boolean, type: "normal" | "important" }>({ text: "", active: false, type: "normal" });
+  const [notice, setNotice] = useState<{ text: string, active: boolean, type: "normal" | "important", updatedAt?: number }>({ text: "", active: false, type: "normal" });
   const [adminSettings, setAdminSettings] = useState<{ 
     mainSheetUrl: string, 
     infoGid: string, 
@@ -212,6 +212,7 @@ export default function Index() {
   const [authPassword, setAuthPassword] = useState("");
   const [authFullName, setAuthFullName] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Users from Database State
   interface DbUser {
@@ -545,11 +546,12 @@ export default function Index() {
 
     const unsubNotice = onSnapshot(doc(db, "notices", "current"), (s) => {
       if (s.exists()) {
-        const data = s.data() as { text: string; active: boolean; type?: "normal" | "important" };
+        const data = s.data() as { text: string; active: boolean; type?: "normal" | "important"; updatedAt?: any };
         setNotice({
           text: data.text,
           active: data.active,
-          type: data.type || "normal"
+          type: data.type || "normal",
+          updatedAt: data.updatedAt?.toMillis ? data.updatedAt.toMillis() : Date.now()
         });
         setNewNoticeText(data.text);
         setNewNoticeType(data.type || "normal");
@@ -593,15 +595,41 @@ export default function Index() {
     };
   }, []);
 
+  // Real-time listener for current user's role to grant instant Admin access
   useEffect(() => {
-    if (user) {
-      const email = user.email?.toLowerCase();
-      const isRoot = email === "mafikulmovie@gmail.com";
-      const isGlobal = (adminSettings.adminEmails || []).some(e => e.toLowerCase() === email);
-      setIsAdmin(isRoot || isGlobal);
-    } else {
+    if (!user) {
       setIsAdmin(false);
+      return;
     }
+
+    const email = user.email ? user.email.trim().toLowerCase() : "";
+    const isRoot = email === "mafikulmovie@gmail.com";
+    if (isRoot) {
+      setIsAdmin(true);
+      return;
+    }
+
+    // Set initial state based on static list fallback
+    const isGlobalInit = (adminSettings.adminEmails || []).some(e => e.trim().toLowerCase() === email);
+    setIsAdmin(isGlobalInit);
+
+    // Subscribe to the logged-in user's profile inside the users collection
+    const userDocRef = doc(db, "users", user.uid);
+    const unsubUserDoc = onSnapshot(userDocRef, (snap) => {
+      if (snap.exists()) {
+        const uData = snap.data();
+        const isDbAdmin = uData?.role?.trim().toLowerCase() === "admin";
+        const isGlobal = (adminSettings.adminEmails || []).some(e => e.trim().toLowerCase() === email);
+        setIsAdmin(isDbAdmin || isGlobal);
+      } else {
+        const isGlobal = (adminSettings.adminEmails || []).some(e => e.trim().toLowerCase() === email);
+        setIsAdmin(isGlobal);
+      }
+    }, (error) => {
+      console.warn("Could not listen to current user doc:", error);
+    });
+
+    return () => unsubUserDoc();
   }, [user, adminSettings.adminEmails]);
 
   useEffect(() => {
@@ -821,12 +849,16 @@ export default function Index() {
   };
 
   const updateNotice = async () => {
+    if (!newNoticeText.trim()) {
+      toast.error("Notice text cannot be empty.");
+      return;
+    }
     try {
       await setDoc(doc(db, "notices", "current"), {
         text: newNoticeText,
         active: true,
         type: newNoticeType,
-        createdAt: new Date()
+        updatedAt: serverTimestamp()
       });
       toast.success("Notice Updated");
     } catch (e) {
@@ -837,7 +869,8 @@ export default function Index() {
   const toggleNotice = async () => {
     try {
       await updateDoc(doc(db, "notices", "current"), {
-        active: !notice.active
+        active: !notice.active,
+        updatedAt: serverTimestamp()
       });
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, "notices/current");
@@ -929,10 +962,10 @@ export default function Index() {
   };
 
   useEffect(() => {
-    // Reset dismissal state whenever the exact notice text changes
-    // This allows the user to see the notice again if the admin updates it
+    // Reset dismissal state whenever the notice is updated or when it is toggled active
+    // This allows the user to see the notice again if the admin updates or enables it
     setHasDismissedNotice(false);
-  }, [notice.text, notice.type]);
+  }, [notice.text, notice.type, notice.active, notice.updatedAt]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -1022,6 +1055,68 @@ export default function Index() {
       })
     : teachers;
 
+  const renderNoticeBanner = () => {
+    return (
+      <AnimatePresence>
+        {notice.active && notice.text && (!hasDismissedNotice || notice.type === "important") && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ 
+              opacity: 0, 
+              x: Math.abs(swipeOffset.x) > Math.abs(swipeOffset.y) ? (swipeOffset.x > 0 ? 100 : -100) : 0,
+              y: Math.abs(swipeOffset.y) >= Math.abs(swipeOffset.x) ? (swipeOffset.y > 0 ? 100 : -100) : 0,
+              filter: "blur(10px)",
+              transition: { duration: 0.2 }
+            }}
+            drag={notice.type === "normal"}
+            dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+            dragElastic={0.8}
+            onDrag={(_, info) => {
+              setSwipeOffset({ x: info.offset.x, y: info.offset.y });
+            }}
+            onDragEnd={(_, info) => {
+              const threshold = 50;
+              if ((Math.abs(info.offset.x) > threshold || Math.abs(info.offset.y) > threshold) && notice.type === "normal") {
+                setHasDismissedNotice(true);
+              } else {
+                setSwipeOffset({ x: 0, y: 0 });
+              }
+            }}
+            className="mb-5 cursor-grab active:cursor-grabbing touch-none select-none relative z-30 w-full text-left"
+          >
+            <div className={`flex items-start gap-3 rounded-2xl p-4 border shadow-sm transition-colors ${notice.type === "important" ? "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900/50" : "bg-primary/10 border-primary/20 dark:bg-primary/5 dark:border-primary/20"}`}>
+              {notice.type === "important" ? (
+                <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+              ) : (
+                <Bell className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+              )}
+              <div className="flex-1 overflow-hidden">
+                <p className={`text-sm font-semibold leading-relaxed whitespace-pre-wrap ${notice.type === "important" ? "text-red-900 dark:text-red-200" : "text-foreground"}`}>
+                  {notice.text}
+                </p>
+                {notice.type === "normal" && (
+                   <p className="mt-1 text-[10px] text-muted-foreground/70 font-medium">
+                     Swipe in any direction to dismiss
+                   </p>
+                )}
+              </div>
+              {notice.type === "normal" && (
+                <button 
+                  onClick={() => setHasDismissedNotice(true)}
+                  className="text-muted-foreground hover:text-foreground transition-colors p-1 shrink-0"
+                  title="Dismiss"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  };
+
   if (isChangingRole || !role) {
     // Current role will be in 2nd position, other role in 1st.
     const isStudent = role === "student";
@@ -1064,6 +1159,7 @@ export default function Index() {
               <img src="https://i.imgur.com/3lIISc2.png" alt="Vu Routine Logo" className="object-contain" style={{ width: '250px', height: '250px', marginTop: '-7px' }} />
             </div>
           </div>
+          {renderNoticeBanner()}
           <div className="space-y-4">
             <p className="text-xl font-bold tracking-tight text-foreground/90" style={{ marginTop: '-9px', marginBottom: '11px', paddingBottom: '8.5px' }}>
               {role ? "Change your role" : "I am a"}
@@ -1283,63 +1379,7 @@ export default function Index() {
       </div>
 
       {/* Notice Banner */}
-      <AnimatePresence>
-        {notice.active && notice.text && (!hasDismissedNotice || notice.type === "important") && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ 
-              opacity: 0, 
-              x: Math.abs(swipeOffset.x) > Math.abs(swipeOffset.y) ? (swipeOffset.x > 0 ? 100 : -100) : 0,
-              y: Math.abs(swipeOffset.y) >= Math.abs(swipeOffset.x) ? (swipeOffset.y > 0 ? 100 : -100) : 0,
-              filter: "blur(10px)",
-              transition: { duration: 0.2 }
-            }}
-            drag={notice.type === "normal"}
-            dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-            dragElastic={0.8}
-            onDrag={(_, info) => {
-              setSwipeOffset({ x: info.offset.x, y: info.offset.y });
-            }}
-            onDragEnd={(_, info) => {
-              const threshold = 50;
-              if ((Math.abs(info.offset.x) > threshold || Math.abs(info.offset.y) > threshold) && notice.type === "normal") {
-                setHasDismissedNotice(true);
-              } else {
-                setSwipeOffset({ x: 0, y: 0 });
-              }
-            }}
-            className="mb-5 cursor-grab active:cursor-grabbing touch-none select-none relative z-30"
-          >
-            <div className={`flex items-start gap-3 rounded-2xl p-4 border shadow-sm transition-colors ${notice.type === "important" ? "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900/50" : "bg-primary/10 border-primary/20 dark:bg-primary/5 dark:border-primary/20"}`}>
-              {notice.type === "important" ? (
-                <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-              ) : (
-                <Bell className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-              )}
-              <div className="flex-1 overflow-hidden">
-                <p className={`text-sm font-semibold leading-relaxed whitespace-pre-wrap ${notice.type === "important" ? "text-red-900 dark:text-red-200" : "text-foreground"}`}>
-                  {notice.text}
-                </p>
-                {notice.type === "normal" && (
-                   <p className="mt-1 text-[10px] text-muted-foreground/70 font-medium">
-                     Swipe in any direction to dismiss
-                   </p>
-                )}
-              </div>
-              {notice.type === "normal" && (
-                <button 
-                  onClick={() => setHasDismissedNotice(true)}
-                  className="text-muted-foreground hover:text-foreground transition-colors p-1 shrink-0"
-                  title="Dismiss"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {renderNoticeBanner()}
 
       {/* Student: Semester picker */}
       {role === "student" && (
@@ -2385,24 +2425,15 @@ export default function Index() {
           <div className="flex-1 overflow-y-auto px-6 pb-8">
             {/* Tab Selector / Description */}
             {authTab === "forgot" ? (
-              <div className="mb-6 p-4 bg-secondary/30 rounded-xl border border-border/50 space-y-3">
+              <div className="mb-6 p-4 bg-secondary/30 rounded-xl border border-border/50 space-y-2.5">
                 <p className="text-sm font-bold text-foreground text-center">Forgot Password</p>
                 <p className="text-xs text-muted-foreground leading-relaxed text-center">
                   Enter your registered email address below. We'll send you a secure link to reset your account password.
                 </p>
-                <div className="p-3 bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 rounded-xl text-xs leading-relaxed space-y-1.5">
-                  <p className="font-bold flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
-                    <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
-                    Reset Email Not Arriving?
-                  </p>
-                  <p className="opacity-90">
-                    By default, emails sent from a newly provisioned Firebase sandbox app use an unverified default sender brand (<code className="bg-amber-500/15 px-1 py-0.5 rounded font-mono text-[10px]">noreply@...-client.firebaseapp.com</code>). 
-                  </p>
-                  <p className="opacity-90">
-                    Due to modern email security rules (SPF/DKIM/DMARC), major providers like <b>Gmail, Yahoo, and Outlook</b> aggressively filter or silent-drop unverified subdomains before they can even make it to your Spam or Junk folders.
-                  </p>
-                  <p className="font-semibold text-amber-900 dark:text-amber-200 mt-1">
-                    💡 Free Instant Solution: Click "Back to Sign In" and use <span className="underline decoration-wavy decoration-amber-500">Continue with Google</span>. It is free, instant, and lets you log in securely without any password/reset issues.
+                <div className="mt-2 bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20 rounded-xl p-3 text-[11px] leading-relaxed flex items-start gap-2">
+                  <span className="text-sm shrink-0">💡</span>
+                  <p>
+                    <span className="font-bold">Important:</span> Be sure to check your <span className="font-bold underline decoration-amber-500">Spam or Junk box</span> for the password reset email.
                   </p>
                 </div>
               </div>
@@ -2416,6 +2447,7 @@ export default function Index() {
                     setAuthEmail("");
                     setAuthPassword("");
                     setAuthFullName("");
+                    setShowPassword(false);
                   }}
                 >
                   Sign In
@@ -2428,6 +2460,7 @@ export default function Index() {
                     setAuthEmail("");
                     setAuthPassword("");
                     setAuthFullName("");
+                    setShowPassword(false);
                   }}
                 >
                   Sign Up
@@ -2479,15 +2512,24 @@ export default function Index() {
                       </button>
                     )}
                   </div>
-                  <input
-                    type="password"
-                    required
-                    minLength={authTab === "signup" ? 6 : undefined}
-                    placeholder={authTab === "signup" ? "At least 6 characters" : "••••••••"}
-                    value={authPassword}
-                    onChange={(e) => setAuthPassword(e.target.value)}
-                    className="w-full rounded-xl border bg-card p-2.5 text-sm outline-none focus:border-primary"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      minLength={authTab === "signup" ? 6 : undefined}
+                      placeholder={authTab === "signup" ? "At least 6 characters" : "••••••••"}
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      className="w-full rounded-xl border bg-card p-2.5 pr-10 text-sm outline-none focus:border-primary"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground hover:scale-110 active:scale-95 transition-all focus:outline-none"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
               )}
 

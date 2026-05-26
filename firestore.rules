@@ -37,6 +37,10 @@ service cloud.firestore {
                  exists(/databases/$(database)/documents/settings/global) &&
                  'adminEmails' in get(/databases/$(database)/documents/settings/global).data &&
                  request.auth.token.email in get(/databases/$(database)/documents/settings/global).data.adminEmails
+               ) ||
+               (
+                 exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                 get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin"
                )
              );
     }
@@ -72,7 +76,8 @@ service cloud.firestore {
              data.text.size() < 1000 &&
              data.active is bool &&
              data.type in ['normal', 'important'] &&
-             (!('createdAt' in data) || data.createdAt is timestamp);
+             (!('createdAt' in data) || data.createdAt is timestamp) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
     }
 
     function isValidUser(data) {
@@ -96,7 +101,7 @@ service cloud.firestore {
 
     match /notices/current {
       allow read: if true; // Public notices
-      allow write: if isAdmin() && isValidNotice(request.resource.data) && hasOnlyAllowedFields(request.resource.data, ['text', 'active', 'createdAt', 'type']);
+      allow write: if isAdmin() && isValidNotice(request.resource.data) && hasOnlyAllowedFields(request.resource.data, ['text', 'active', 'createdAt', 'updatedAt', 'type']);
     }
 
     match /users/{userId} {
