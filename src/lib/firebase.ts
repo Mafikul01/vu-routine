@@ -18,7 +18,8 @@ import {
   signInWithCredential,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail
 } from "firebase/auth";
 const firebaseConfig = {
   apiKey: "AIzaSyANespMmSAH1myAyzpkgpLpOPtH3dmJnDQ",
@@ -114,5 +115,6 @@ export {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail
 };
