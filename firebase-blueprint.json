@@ -34,19 +34,6 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["text", "active", "type"]
-    },
-    "User": {
-      "title": "User Profile",
-      "description": "User profile document containing register system details",
-      "type": "object",
-      "properties": {
-        "uid": { "type": "string" },
-        "email": { "type": "string" },
-        "fullName": { "type": "string" },
-        "role": { "type": "string", "enum": ["user", "admin"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["uid", "email", "role"]
     }
   },
   "firestore": {
@@ -57,10 +44,6 @@
     "/notices/current": {
       "schema": "Notice",
       "description": "The active announcement text"
-    },
-    "/users/{userId}": {
-      "schema": "User",
-      "description": "Registered user profile details"
     }
   }
 }

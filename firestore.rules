@@ -31,17 +31,13 @@ service cloud.firestore {
     
     function isAdmin() {
       return request.auth != null && 
+             request.auth.token.email_verified == true &&
              (
-               ("email" in request.auth.token && request.auth.token.email == "mafikulmovie@gmail.com") ||
+               request.auth.token.email == "mafikulmovie@gmail.com" ||
                (
                  exists(/databases/$(database)/documents/settings/global) &&
                  'adminEmails' in get(/databases/$(database)/documents/settings/global).data &&
-                 "email" in request.auth.token &&
                  request.auth.token.email in get(/databases/$(database)/documents/settings/global).data.adminEmails
-               ) ||
-               (
-                 exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-                 get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin"
                )
              );
     }
@@ -76,18 +72,7 @@ service cloud.firestore {
              data.text.size() > 0 && 
              data.text.size() < 1000 &&
              data.active is bool &&
-             (!('type' in data) || data.type in ['normal', 'important']) &&
-             (!('createdAt' in data) || data.createdAt is timestamp) &&
-             (!('updatedAt' in data) || data.updatedAt is timestamp || data.updatedAt is number);
-    }
-
-    function isValidUser(data) {
-      return data.uid is string &&
-             data.uid.size() > 0 &&
-             data.email is string &&
-             data.email.size() > 0 &&
-             data.role in ['user', 'admin'] &&
-             (!('fullName' in data) || data.fullName is string) &&
+             data.type in ['normal', 'important'] &&
              (!('createdAt' in data) || data.createdAt is timestamp);
     }
 
@@ -97,22 +82,12 @@ service cloud.firestore {
 
     match /settings/global {
       allow read: if true; // Public configuration
-      allow write: if isAdmin() && isValidSettings(request.resource.data);
+      allow write: if isAdmin() && isValidSettings(request.resource.data) && hasOnlyAllowedFields(request.resource.data, ['mainSheetUrl', 'infoGid', 'semesterGids', 'githubUsername', 'adminEmails', 'devName', 'devStudentId', 'devFacebook', 'devLinkedin', 'devWhatsapp', 'devProfileImage', 'busSchedule']);
     }
 
     match /notices/current {
       allow read: if true; // Public notices
-      allow write: if isAdmin() && isValidNotice(request.resource.data);
-    }
-
-    match /users/{userId} {
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow create: if isAuthenticated() && request.auth.uid == userId && isValidUser(request.resource.data);
-      allow update: if isAuthenticated() && (
-        (request.auth.uid == userId && isValidUser(request.resource.data) && hasOnlyAllowedFields(request.resource.data, ['uid', 'email', 'fullName', 'role', 'createdAt']) && request.resource.data.role == resource.data.role) ||
-        isAdmin()
-      );
-      allow delete: if isAdmin();
+      allow write: if isAdmin() && isValidNotice(request.resource.data) && hasOnlyAllowedFields(request.resource.data, ['text', 'active', 'createdAt', 'type']);
     }
     
     // Default deny
