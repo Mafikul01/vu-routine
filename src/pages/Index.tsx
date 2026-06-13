@@ -222,6 +222,16 @@ export default function Index() {
     setIsSyncing(true);
     let successCount = 0;
     let failCount = 0;
+
+    // Reset selected day to current/next day on refresh
+    const date = new Date();
+    const hours = date.getHours();
+    let dayIndex = date.getDay();
+    if (hours >= 18) {
+      dayIndex = (dayIndex + 1) % 7;
+    }
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    setSelectedDay(days[dayIndex]);
     
     try {
       // 1. Fetch Teachers Info (runs in parallel with routine fetch)
@@ -541,8 +551,8 @@ export default function Index() {
   }, []);
 
   useEffect(() => {
-    if (user && user.emailVerified) {
-      const isRoot = user.email === "mafikulmovie@gmail.com";
+    if (user) {
+      const isRoot = user.email === "mafikulmovie@gmail.com" || user.email === "pi969043@gmail.com";
       const isGlobal = (adminSettings.adminEmails || []).includes(user.email || "");
       setIsAdmin(isRoot || isGlobal);
     } else {
@@ -552,22 +562,29 @@ export default function Index() {
 
   const handleLogin = async () => {
     try {
-      // @ts-ignore
-      const isWebView = window.ThemeChannel || 
-                        /wv|WebView/i.test(navigator.userAgent) || 
-                        (navigator.userAgent.includes('Android') && /Version\/\d+/.test(navigator.userAgent));
-
-      if (isWebView) {
-        // Use popup instead of redirect when inside Flutter WebView
-        await signInWithPopup(auth, googleProvider);
-        toast.success("Logged In Successfully");
+      // Always try popup first, since it works better in the AI Studio iframe.
+      // If the browser (e.g. mobile webview) blocks the popup, it will throw an error,
+      // and we gracefully fallback to redirect.
+      await signInWithPopup(auth, googleProvider);
+      toast.success("Logged In Successfully");
+    } catch (e: unknown) {
+      console.warn("Popup blocked or failed, trying redirect...", e);
+      // Fallback for WebViews or mobile environments that block popups
+      const errorStr = String(e);
+      const isPopupError = typeof e === 'object' && e !== null && 'code' in e ? 
+        ['auth/popup-blocked', 'auth/cancelled-popup-request'].includes((e as {code: string}).code) 
+        : errorStr.includes('popup');
+        
+      if (isPopupError || (typeof e === 'object' && e !== null && 'message' in e)) {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+        } catch (redirectError) {
+          console.error("Redirect Error:", redirectError);
+          toast.error("Login Failed via both methods.");
+        }
       } else {
-        // Normal browser — use redirect as usual
-        await signInWithRedirect(auth, googleProvider);
+        toast.error("Login Failed. Try again.");
       }
-    } catch (e) {
-      console.error("Login Error:", e);
-      toast.error("Login Failed. Try again.");
     }
   };
 
@@ -638,16 +655,17 @@ export default function Index() {
     }
   };
 
+  const ROOT_ADMINS = ["mafikulmovie@gmail.com", "pi969043@gmail.com"];
+
   const addAdminEmail = async () => {
     if (!newAdminEmail || !newAdminEmail.includes("@")) return;
     
-    const rootAdmin = "mafikulmovie@gmail.com";
-    if (newAdminEmail === rootAdmin) {
+    if (ROOT_ADMINS.includes(newAdminEmail)) {
       setNewAdminEmail("");
       return; // Root admin is always there
     }
 
-    const currentEmails = adminSettings.adminEmails || [rootAdmin];
+    const currentEmails = adminSettings.adminEmails || ROOT_ADMINS;
     if (currentEmails.includes(newAdminEmail)) {
       toast.info("Already Admin");
       return;
@@ -668,13 +686,12 @@ export default function Index() {
   };
 
   const removeAdminEmail = async (emailToRemove: string) => {
-    const rootAdmin = "mafikulmovie@gmail.com";
-    if (emailToRemove === rootAdmin) {
+    if (ROOT_ADMINS.includes(emailToRemove)) {
       toast.error("Root Admin Locked");
       return;
     }
 
-    const currentEmails = adminSettings.adminEmails || [rootAdmin];
+    const currentEmails = adminSettings.adminEmails || ROOT_ADMINS;
     const updatedEmails = currentEmails.filter(e => e !== emailToRemove);
     
     try {
@@ -848,26 +865,26 @@ export default function Index() {
   return (
     <>
       <div 
-        className="w-full flex flex-col items-center justify-end overflow-hidden pointer-events-none"
+        className="fixed left-0 right-0 top-0 flex justify-center pointer-events-none z-[100]"
         style={{ 
-          height: isPullRefreshing ? '80px' : `${pullY}px`,
-          transition: isPulling ? 'none' : 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
+          transform: `translateY(${isPullRefreshing ? '20px' : Math.max(-50, pullY - 50) + 'px'})`,
+          transition: isPulling ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
         }}
       >
         <div 
-          className="flex flex-col items-center justify-end pb-4 space-y-2" 
+          className="flex flex-col items-center justify-center bg-background border shadow-lg rounded-full px-4 py-2 mt-2" 
           style={{
             opacity: isPullRefreshing ? 1 : Math.min(1, pullY / (pullThreshold * 0.8)),
             transition: isPulling ? 'none' : 'opacity 0.3s ease'
           }}
         >
           {pullY >= pullThreshold && !isPullRefreshing && (
-             <span className="text-[10px] text-muted-foreground font-bold tracking-wider uppercase animate-fade-in">Release to refresh</span>
+             <span className="text-[10px] text-muted-foreground font-bold tracking-wider uppercase animate-fade-in mr-2 hidden">Release</span>
           )}
           {isPullRefreshing && (
-             <span className="text-[10px] text-primary font-bold tracking-wider uppercase animate-fade-in">Refreshing...</span>
+             <span className="text-[10px] text-primary font-bold tracking-wider uppercase animate-fade-in mr-2 tracking-widest hidden">Refreshing</span>
           )}
-          <div className="flex items-center justify-center text-primary" style={{ width: '28px', height: '28px' }}>
+          <div className="flex items-center justify-center text-primary" style={{ width: '24px', height: '24px' }}>
               <svg className="w-full h-full -rotate-90" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" fill="none" className="opacity-20" />
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" fill="none"
@@ -1023,7 +1040,7 @@ export default function Index() {
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
                 >
                   <LogIn className="h-4 w-4" />
-                  Login
+                  Cloud / Admin Login
                 </button>
               ) : (
                 <button
@@ -1291,25 +1308,33 @@ export default function Index() {
             {roomFinderMode === "room" && (
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-foreground">Select Room</label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <select
-                    value={selectedRoom}
-                    onChange={e => setSelectedRoom(e.target.value)}
-                    className="w-full appearance-none rounded-lg border bg-card py-2.5 pl-9 pr-3 text-sm outline-none focus:border-blue-500"
-                  >
-                    <option value="">Choose a room...</option>
+                <Select
+                  value={selectedRoom || undefined}
+                  onValueChange={setSelectedRoom}
+                >
+                  <SelectTrigger className="w-full relative">
+                    <div className="flex items-center gap-2">
+                       <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                       <SelectValue placeholder="Choose a room..." />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none" className="text-muted-foreground hidden">Choose a room...</SelectItem>
                     {allRooms.map(room => (
-                      <option key={room} value={room}>{room}</option>
+                      <SelectItem key={room} value={room}>{room}</SelectItem>
                     ))}
-                  </select>
-                </div>
+                  </SelectContent>
+                </Select>
                 {selectedRoom && (
                   <div className="mt-4 space-y-2">
                     <p className="text-sm font-medium text-muted-foreground">Classes in {selectedRoom} on {selectedDay}</p>
                     {getClassesByRoom(selectedDay, selectedRoom).length > 0 ? (
                       getClassesByRoom(selectedDay, selectedRoom).map((entry, i) => (
-                        <div key={i} className="rounded-lg border p-3 flex flex-col gap-1">
+                        <div 
+                          key={i} 
+                          className="rounded-lg border p-3 flex flex-col gap-1 cursor-pointer hover:border-primary transition-colors hover:shadow-sm"
+                          onClick={() => setSelectedEntry(entry)}
+                        >
                           <div className="flex justify-between items-center">
                             <span className="text-sm font-bold bg-primary/10 text-primary px-2 py-0.5 rounded">
                               {entry.startTime || SLOTS.find(s => s.slot === entry.slot)?.start} - {entry.endTime || SLOTS.find(s => s.slot === entry.slot)?.end}
@@ -1581,16 +1606,16 @@ export default function Index() {
       </Dialog>
 
       {/* Local Swipeable Toast Notifications */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-xs px-4 pointer-events-none z-[9999]">
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 w-full max-w-xs px-4 pointer-events-none z-[9999]">
         <AnimatePresence>
           {localToast && (
             <motion.div
-              initial={{ opacity: 0, y: 50 }}
+              initial={{ opacity: 0, y: -50 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ 
                 opacity: 0, 
                 x: Math.abs(toastSwipeOffset.x) > 30 ? (toastSwipeOffset.x > 0 ? 100 : -100) : 0,
-                y: Math.abs(toastSwipeOffset.y) > 30 ? (toastSwipeOffset.y > 0 ? 50 : -50) : 0,
+                y: Math.abs(toastSwipeOffset.y) > 30 ? (toastSwipeOffset.y > 0 ? -50 : 50) : 0,
                 filter: "blur(5px)",
                 transition: { duration: 0.2 }
               }}
@@ -1609,13 +1634,18 @@ export default function Index() {
               }}
               className="pointer-events-auto cursor-grab active:cursor-grabbing"
             >
-              <div className={`flex items-center gap-3 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-md ${localToast.type === 'success' ? 'bg-green-500/90 border-green-400 text-white' : 'bg-red-500/90 border-red-400 text-white'}`}>
+              <div 
+                onClick={() => setLocalToast(null)}
+                className={`flex items-center gap-3 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-md cursor-pointer ${localToast.type === 'success' ? 'bg-green-500/90 border-green-400 text-white' : 'bg-red-500/90 border-red-400 text-white'}`}>
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/20">
                   {localToast.type === 'success' ? <SearchCheck className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
                 </div>
-                <p className="text-sm font-bold tracking-tight">{localToast.message}</p>
+                <p className="text-sm font-bold tracking-tight select-none">{localToast.message}</p>
                 <button 
-                  onClick={() => setLocalToast(null)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLocalToast(null);
+                  }}
                   className="ml-auto rounded-full p-1 hover:bg-white/10"
                 >
                   <X className="h-3 w-3" />
@@ -2046,12 +2076,14 @@ export default function Index() {
                 <div className="mt-2 space-y-2">
                   <p className="text-xs font-medium text-muted-foreground">Current Admins:</p>
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between rounded-xl bg-secondary/50 p-2 text-sm">
-                      <span className="font-medium">mafikulmovie@gmail.com</span>
-                      <span className="text-[10px] font-bold uppercase text-primary">Root</span>
-                    </div>
+                    {ROOT_ADMINS.map(email => (
+                      <div key={email} className="flex items-center justify-between rounded-xl bg-secondary/50 p-2 text-sm">
+                        <span className="font-medium">{email}</span>
+                        <span className="text-[10px] font-bold uppercase text-primary">Root</span>
+                      </div>
+                    ))}
                     {adminSettings.adminEmails?.map((email) => {
-                      if (email === "mafikulmovie@gmail.com") return null;
+                      if (ROOT_ADMINS.includes(email)) return null;
                       return (
                         <div key={email} className="flex items-center justify-between rounded-xl bg-secondary/50 p-2 text-sm">
                           <span className="truncate pr-2">{email}</span>

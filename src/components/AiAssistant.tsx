@@ -89,12 +89,77 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
     
+    const lowerInput = input.trim().toLowerCase();
+
     // Add user message
     const userMsg: Message = { role: 'user', content: input.trim() };
     const currentMessages = [...messages, userMsg];
     setMessages(currentMessages);
     setInput('');
     setIsLoading(true);
+
+    // --- QUICK CACHE / SHORTCUT RESPONSES ---
+    // Handle very common questions without hitting the AI model to save limit
+    const quickResponses: { keywords: string[], text: string }[] = [
+      {
+        keywords: ["student id", "my id", "what is my id", "my student id"],
+        text: "Your student ID is 232311070."
+      },
+      {
+        keywords: ["who created you", "who is your developer", "who made you", "your creator"],
+        text: "I was created by Mafikul Islam (Student ID: 232311070, 33rd - 6th B). GitHub: https://github.com/mafikul01. WhatsApp: +8801788302771."
+      },
+      {
+        keywords: ["slot 1 time", "when is slot 1", "what time is slot 1"],
+        text: "Slot 1 is from 09:00 AM to 10:00 AM."
+      },
+      {
+         keywords: ["slot 2 time", "when is slot 2", "what time is slot 2"],
+         text: "Slot 2 is from 10:05 AM to 11:05 AM."
+      },
+      {
+         keywords: ["slot 3 time", "when is slot 3", "what time is slot 3"],
+         text: "Slot 3 is from 11:10 AM to 12:10 PM."
+      },
+      {
+         keywords: ["slot 4 time", "when is slot 4", "what time is slot 4"],
+         text: "Slot 4 is from 12:15 PM to 01:15 PM."
+      },
+      {
+         keywords: ["slot 5 time", "when is slot 5", "what time is slot 5"],
+         text: "Slot 5 is from 01:50 PM to 02:50 PM."
+      },
+      {
+         keywords: ["slot 6 time", "when is slot 6", "what time is slot 6"],
+         text: "Slot 6 is from 02:55 PM to 03:55 PM."
+      },
+      {
+        keywords: ["who are you", "what is your name", "what can you do"],
+        text: "I am Mr. Mendak, a helpful university AI assistant for the VU Routine App. I can help you analyze your class routine, find free rooms, and check teacher availability."
+      }
+    ];
+
+    let cachedResponse = null;
+    
+    // Check if the input exactly matches or contains mainly the keywords
+    for (const qr of quickResponses) {
+      if (qr.keywords.some(kw => lowerInput.includes(kw))) {
+        // Prevent matching "id" inside a long sentence by making sure it's a short query
+        // or an exact match for longer queries.
+        if (lowerInput.length < 50 || lowerInput === qr.keywords[0]) {
+           cachedResponse = qr.text;
+           break;
+        }
+      }
+    }
+
+    if (cachedResponse) {
+      setTimeout(() => {
+         setMessages(prev => [...prev, { role: 'model', content: cachedResponse }]);
+         setIsLoading(false);
+      }, 500); // Simulate network delay slightly for natural feel
+      return;
+    }
 
     try {
       // --- OPTIMIZATION START ---
@@ -180,6 +245,7 @@ Instructions:
 - ALWAYS refer to the Slot Time Mapping above when mentioning class times.
 - DO NOT end your messages with any signature, name, or repetitive closing phrases like "How else can I assist you?".
 - You were created by Mafikul Islam (Student ID: 232311070, 33rd - 6th B). GitHub: https://github.com/mafikul01. WhatsApp: +8801788302771 (only mention these details if specifically asked about your creator/developer).
+- If the user asks for their student ID, tell them their student ID is 232311070.
 - Stay in character as a helpful assistant, but be direct.
 `;
 
@@ -326,8 +392,8 @@ Instructions:
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="fixed bottom-4 right-4 sm:bottom-24 sm:right-5 w-[calc(100vw-32px)] sm:w-[380px] bg-background border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[50] p-0"
             style={{ 
-              maxHeight: 'calc(100dvh - 160px)', 
-              height: 'min(500px, calc(100dvh - 180px))',
+              maxHeight: 'calc(100dvh - 40px)', 
+              height: 'min(950px, calc(100dvh - 40px))',
               top: 'auto',
               bottom: 'max(16px, env(safe-area-inset-bottom))'
             }}
@@ -406,7 +472,6 @@ Instructions:
                 placeholder="Ask about free rooms, teachers..."
                 className="flex-1 bg-muted/50 border border-input rounded-xl px-3 py-2.5 text-sm resize-none outline-none focus:ring-1 focus:ring-primary max-h-[100px] min-h-[44px]"
                 rows={1}
-                disabled={isLoading}
               />
               <Button 
                 size="icon" 
