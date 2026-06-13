@@ -392,13 +392,12 @@ Instructions:
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="fixed bottom-4 right-4 sm:bottom-24 sm:right-5 w-[calc(100vw-32px)] sm:w-[380px] bg-background border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[50] p-0"
             style={{ 
-              maxHeight: 'calc(100dvh - 40px)', 
-              height: 'min(950px, calc(100dvh - 40px))',
-              top: 'auto',
+              maxHeight: 'calc(100% - 32px)', 
+              height: '700px',
               bottom: 'max(16px, env(safe-area-inset-bottom))'
             }}
           >
-            <div ref={windowRef} className="flex flex-col h-full w-full">
+            <div ref={windowRef} className="flex flex-col h-full w-full min-h-0">
             {/* Header */}
             <div className="bg-primary p-4 text-primary-foreground flex items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-3">

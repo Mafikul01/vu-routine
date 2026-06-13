@@ -24,8 +24,8 @@ export function DayPicker({ selectedDay, onSelectDay, freeDays = [] }: DayPicker
       
       let distance = targetDayOfWeek - currentDayOfWeek;
       
-      // If today is Friday or Saturday, show next week's dates for Sunday-Thursday
-      if ((currentDayOfWeek === 5 || currentDayOfWeek === 6) && targetDayOfWeek >= 0 && targetDayOfWeek <= 4) {
+      // If the day has already passed this week, show next week's date for that day
+      if (distance < 0) {
         distance += 7;
       }
       
@@ -65,6 +65,26 @@ export function DayPicker({ selectedDay, onSelectDay, freeDays = [] }: DayPicker
 
   const upcomingDates = getUpcomingDates();
 
+  const [selectedUpcomingId, setSelectedUpcomingId] = useState<string | null>(null);
+  const [prevSelectedDay, setPrevSelectedDay] = useState(selectedDay);
+
+  if (selectedDay !== prevSelectedDay) {
+    setPrevSelectedDay(selectedDay);
+    const currentlySelected = upcomingDates.find(d => d.id === selectedUpcomingId);
+    if (!currentlySelected || currentlySelected.dayStr !== selectedDay) {
+      const firstMatch = upcomingDates.find(d => d.dayStr === selectedDay);
+      setSelectedUpcomingId(firstMatch ? firstMatch.id : null);
+    }
+  }
+
+  // Set initial selectedUpcomingId if null
+  useEffect(() => {
+    if (!selectedUpcomingId) {
+      const firstMatch = upcomingDates.find(d => d.dayStr === selectedDay);
+      if (firstMatch) setSelectedUpcomingId(firstMatch.id);
+    }
+  }, [selectedDay, upcomingDates, selectedUpcomingId]);
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex justify-end pr-1">
@@ -73,7 +93,7 @@ export function DayPicker({ selectedDay, onSelectDay, freeDays = [] }: DayPicker
             <Check className="w-2.5 h-2.5" />
           </div>
           <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground group-hover:text-foreground transition-colors">
-            Upcoming
+            Show upcoming dates
           </span>
           <input 
             type="checkbox" 
@@ -125,24 +145,20 @@ export function DayPicker({ selectedDay, onSelectDay, freeDays = [] }: DayPicker
             // Wait, if they select "Sunday", we only want to highlight the selected week's Sunday. For infinite scroll, maybe just highlight the first matching or let the caller update `selectedDay`. 
             // In a real app we'd pass exact Date to `onSelectDay`, but since we only have `dayStr`, we'll just highlight the selected day string.
             const isFree = freeDays.includes(dayStr);
-            // Highlight selected if it's the closest to today that matches that day.
-            // For now, let's just highlight all that match `selectedDay` to keep it simple with existing `selectedDay` string type.
-            const matchesDayStr = selectedDay === dayStr;
-            // Let's only highlight the FIRST matching selectedDay, to prevent all Sundays from lighting up!
-            const isFirstMatch = upcomingDates.findIndex(d => d.dayStr === dayStr) === index;
-            const highlightSelected = matchesDayStr && isFirstMatch;
+            const highlightSelected = selectedUpcomingId ? id === selectedUpcomingId : (selectedDay === dayStr && upcomingDates.findIndex(d => d.dayStr === dayStr) === index);
 
             return (
               <button
                 key={id}
                 onClick={() => {
+                  setSelectedUpcomingId(id);
                   onSelectDay(dayStr);
                   // Optionally, scroll it slightly into view
                   const el = document.getElementById(id);
                   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                 }}
                 id={id}
-                className={`snap-start shrink-0 w-14 flex flex-col items-center justify-center rounded-lg py-2 transition-all outline-none ${
+                className={`relative snap-start shrink-0 w-14 flex flex-col items-center justify-center rounded-lg py-2 transition-all outline-none ${
                   highlightSelected
                     ? "bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/20"
                     : isFree

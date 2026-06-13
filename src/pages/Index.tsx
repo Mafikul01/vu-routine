@@ -865,26 +865,26 @@ export default function Index() {
   return (
     <>
       <div 
-        className="fixed left-0 right-0 top-0 flex justify-center pointer-events-none z-[100]"
+        className="w-full flex flex-col items-center justify-end overflow-hidden pointer-events-none"
         style={{ 
-          transform: `translateY(${isPullRefreshing ? '20px' : Math.max(-50, pullY - 50) + 'px'})`,
-          transition: isPulling ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
+          height: isPullRefreshing ? '80px' : `${pullY}px`,
+          transition: isPulling ? 'none' : 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
         }}
       >
         <div 
-          className="flex flex-col items-center justify-center bg-background border shadow-lg rounded-full px-4 py-2 mt-2" 
+          className="flex flex-col items-center justify-end pb-4 space-y-2" 
           style={{
             opacity: isPullRefreshing ? 1 : Math.min(1, pullY / (pullThreshold * 0.8)),
             transition: isPulling ? 'none' : 'opacity 0.3s ease'
           }}
         >
           {pullY >= pullThreshold && !isPullRefreshing && (
-             <span className="text-[10px] text-muted-foreground font-bold tracking-wider uppercase animate-fade-in mr-2 hidden">Release</span>
+             <span className="text-[10px] text-muted-foreground font-bold tracking-wider uppercase animate-fade-in">Release to refresh</span>
           )}
           {isPullRefreshing && (
-             <span className="text-[10px] text-primary font-bold tracking-wider uppercase animate-fade-in mr-2 tracking-widest hidden">Refreshing</span>
+             <span className="text-[10px] text-primary font-bold tracking-wider uppercase animate-fade-in">Refreshing...</span>
           )}
-          <div className="flex items-center justify-center text-primary" style={{ width: '24px', height: '24px' }}>
+          <div className="flex items-center justify-center text-primary" style={{ width: '28px', height: '28px' }}>
               <svg className="w-full h-full -rotate-90" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" fill="none" className="opacity-20" />
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" fill="none"
@@ -1606,16 +1606,21 @@ export default function Index() {
       </Dialog>
 
       {/* Local Swipeable Toast Notifications */}
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 w-full max-w-xs px-4 pointer-events-none z-[9999]">
+      <div 
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-xs px-4 pointer-events-none z-[9999]"
+        onTouchStart={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
+        onTouchEnd={(e) => e.stopPropagation()}
+      >
         <AnimatePresence>
           {localToast && (
             <motion.div
-              initial={{ opacity: 0, y: -50 }}
+              initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ 
                 opacity: 0, 
                 x: Math.abs(toastSwipeOffset.x) > 30 ? (toastSwipeOffset.x > 0 ? 100 : -100) : 0,
-                y: Math.abs(toastSwipeOffset.y) > 30 ? (toastSwipeOffset.y > 0 ? -50 : 50) : 0,
+                y: Math.abs(toastSwipeOffset.y) > 30 ? (toastSwipeOffset.y > 0 ? 50 : -50) : 0,
                 filter: "blur(5px)",
                 transition: { duration: 0.2 }
               }}
@@ -1636,8 +1641,12 @@ export default function Index() {
             >
               <div 
                 onClick={() => setLocalToast(null)}
-                className={`flex items-center gap-3 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-md cursor-pointer ${localToast.type === 'success' ? 'bg-green-500/90 border-green-400 text-white' : 'bg-red-500/90 border-red-400 text-white'}`}>
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/20">
+                className={`flex items-center gap-3 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-xl font-medium cursor-pointer ${
+                  localToast.type === 'success' 
+                    ? 'bg-green-500/15 border-green-500/30 text-green-900 dark:text-green-100' 
+                    : 'bg-red-500/15 border-red-500/30 text-red-900 dark:text-red-100'
+                }`}>
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-foreground/10">
                   {localToast.type === 'success' ? <SearchCheck className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
                 </div>
                 <p className="text-sm font-bold tracking-tight select-none">{localToast.message}</p>
@@ -1646,7 +1655,7 @@ export default function Index() {
                     e.stopPropagation();
                     setLocalToast(null);
                   }}
-                  className="ml-auto rounded-full p-1 hover:bg-white/10"
+                  className="ml-auto rounded-full p-1 hover:bg-foreground/10"
                 >
                   <X className="h-3 w-3" />
                 </button>
