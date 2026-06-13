@@ -1607,7 +1607,7 @@ export default function Index() {
 
       {/* Local Swipeable Toast Notifications */}
       <div 
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-xs px-4 pointer-events-none z-[9999]"
+        className="fixed bottom-12 left-1/2 -translate-x-1/2 w-full max-w-xs px-4 pointer-events-none z-[9999]"
         onTouchStart={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
         onTouchEnd={(e) => e.stopPropagation()}
@@ -1615,8 +1615,8 @@ export default function Index() {
         <AnimatePresence>
           {localToast && (
             <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, y: 50, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ 
                 opacity: 0, 
                 x: Math.abs(toastSwipeOffset.x) > 30 ? (toastSwipeOffset.x > 0 ? 100 : -100) : 0,
@@ -1641,24 +1641,15 @@ export default function Index() {
             >
               <div 
                 onClick={() => setLocalToast(null)}
-                className={`flex items-center gap-3 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-xl font-medium cursor-pointer ${
+                className={`flex items-center gap-3 rounded-[20px] border px-4 py-3 shadow-lg backdrop-blur-3xl font-medium cursor-pointer ${
                   localToast.type === 'success' 
-                    ? 'bg-green-500/15 border-green-500/30 text-green-900 dark:text-green-100' 
-                    : 'bg-red-500/15 border-red-500/30 text-red-900 dark:text-red-100'
+                    ? 'bg-background/30 border-foreground/[0.05] text-foreground' 
+                    : 'bg-red-500/10 border-red-500/10 text-red-900 dark:text-red-200'
                 }`}>
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-foreground/10">
+                <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${localToast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
                   {localToast.type === 'success' ? <SearchCheck className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
                 </div>
-                <p className="text-sm font-bold tracking-tight select-none">{localToast.message}</p>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setLocalToast(null);
-                  }}
-                  className="ml-auto rounded-full p-1 hover:bg-foreground/10"
-                >
-                  <X className="h-3 w-3" />
-                </button>
+                <p className="text-[13px] font-semibold tracking-tight select-none">{localToast.message}</p>
               </div>
             </motion.div>
           )}

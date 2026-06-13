@@ -24,10 +24,37 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [vvHeight, setVvHeight] = useState('100dvh');
+  const [kbHeight, setKbHeight] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const windowRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!window.visualViewport) return;
+    
+    const handleResize = () => {
+      if (window.visualViewport) {
+        // Leave some small margin 
+        setVvHeight(`${window.visualViewport.height}px`);
+        setKbHeight(window.innerHeight - window.visualViewport.height);
+        scrollToBottom();
+      }
+    };
+
+    window.visualViewport.addEventListener('resize', handleResize);
+    window.visualViewport.addEventListener('scroll', handleResize);
+    // Initial calculation
+    handleResize();
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize);
+        window.visualViewport.removeEventListener('scroll', handleResize);
+      }
+    };
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -392,9 +419,9 @@ Instructions:
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="fixed bottom-4 right-4 sm:bottom-24 sm:right-5 w-[calc(100vw-32px)] sm:w-[380px] bg-background border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[50] p-0"
             style={{ 
-              maxHeight: 'calc(100% - 32px)', 
+              maxHeight: `calc(${vvHeight} - 32px)`, 
               height: '700px',
-              bottom: 'max(16px, env(safe-area-inset-bottom))'
+              bottom: `calc(max(16px, env(safe-area-inset-bottom)) + ${kbHeight}px)`
             }}
           >
             <div ref={windowRef} className="flex flex-col h-full w-full min-h-0">
