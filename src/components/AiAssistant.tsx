@@ -26,10 +26,22 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
   const [isLoading, setIsLoading] = useState(false);
   const [vvHeight, setVvHeight] = useState('100dvh');
   const [kbHeight, setKbHeight] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const windowRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  }, []);
 
   useEffect(() => {
     if (!window.visualViewport) return;
@@ -413,18 +425,38 @@ Instructions:
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            initial={isMobile ? { opacity: 0, y: 100 } : { opacity: 0, y: 20, scale: 0.95 }}
+            animate={isMobile ? { opacity: 1, y: 0 } : { opacity: 1, y: 0, scale: 1 }}
+            exit={isMobile ? { opacity: 0, y: 100 } : { opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-4 right-4 sm:bottom-24 sm:right-5 w-[calc(100vw-32px)] sm:w-[380px] bg-background border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[50] p-0"
-            style={{ 
-              maxHeight: kbHeight > 50 
-                ? `calc((${vvHeight} * 0.9) - 32px)` 
-                : `calc(${vvHeight} - 32px)`, 
-              height: '700px',
-              bottom: `calc(max(16px, env(safe-area-inset-bottom)) + ${kbHeight}px)`
-            }}
+            className={`fixed bg-background overflow-hidden flex flex-col z-[50] p-0 shadow-2xl ${
+              isMobile 
+                ? "inset-x-0 w-full rounded-t-2xl border-t border-border" 
+                : "bottom-24 right-5 w-[380px] border border-border rounded-2xl"
+            }`}
+            style={
+              isMobile 
+                ? {
+                    height: kbHeight > 50 
+                      ? `calc(${vvHeight} * 0.90)`
+                      : `${vvHeight}`,
+                    maxHeight: kbHeight > 50 
+                      ? `calc(${vvHeight} * 0.90)` 
+                      : `${vvHeight}`,
+                    bottom: '0px',
+                    left: '0px',
+                    top: window.visualViewport 
+                      ? `${window.visualViewport.offsetTop + (kbHeight > 50 ? (window.visualViewport.height * 0.10) : 0)}px` 
+                      : '0px',
+                  }
+                : { 
+                    maxHeight: kbHeight > 50 
+                      ? `calc((${vvHeight} * 0.8) - 32px)` 
+                      : `calc(${vvHeight} - 32px)`, 
+                    height: '700px',
+                    bottom: `calc(max(16px, env(safe-area-inset-bottom)) + ${kbHeight}px)`
+                  }
+            }
           >
             <div ref={windowRef} className="flex flex-col h-full w-full min-h-0">
             {/* Header */}
