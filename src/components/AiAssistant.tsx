@@ -25,6 +25,7 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [vvHeight, setVvHeight] = useState('100dvh');
+  const [vvOffsetTop, setVvOffsetTop] = useState(0);
   const [kbHeight, setKbHeight] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -48,8 +49,8 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
     
     const handleResize = () => {
       if (window.visualViewport) {
-        // Leave some small margin 
         setVvHeight(`${window.visualViewport.height}px`);
+        setVvOffsetTop(window.visualViewport.offsetTop);
         setKbHeight(window.innerHeight - window.visualViewport.height);
         scrollToBottom();
       }
@@ -60,11 +61,44 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
     // Initial calculation
     handleResize();
 
+    // Set up rapid polling when the input is focused/blurred to ensure smooth, immediate update
+    let pollInterval: NodeJS.Timeout | null = null;
+    const startPolling = () => {
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = setInterval(handleResize, 33); // ~30 fps updates for fluid tracking
+      setTimeout(() => {
+        if (pollInterval) {
+          clearInterval(pollInterval);
+          pollInterval = null;
+        }
+      }, 1500); // Poll for 1.5s during keyboard layout animation
+    };
+
+    const handleFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
+        startPolling();
+      }
+    };
+
+    const handleFocusOut = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
+        startPolling();
+      }
+    };
+
+    document.addEventListener('focusin', handleFocusIn);
+    document.addEventListener('focusout', handleFocusOut);
+
     return () => {
       if (window.visualViewport) {
         window.visualViewport.removeEventListener('resize', handleResize);
         window.visualViewport.removeEventListener('scroll', handleResize);
       }
+      document.removeEventListener('focusin', handleFocusIn);
+      document.removeEventListener('focusout', handleFocusOut);
+      if (pollInterval) clearInterval(pollInterval);
     };
   }, []);
 
@@ -446,7 +480,7 @@ Instructions:
                     bottom: '0px',
                     left: '0px',
                     top: window.visualViewport 
-                      ? `${window.visualViewport.offsetTop + (kbHeight > 50 ? (window.visualViewport.height * 0.10) : 0)}px` 
+                      ? `${vvOffsetTop + (kbHeight > 50 ? (window.visualViewport.height * 0.10) : 0)}px` 
                       : '0px',
                   }
                 : { 
