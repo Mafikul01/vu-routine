@@ -335,12 +335,12 @@ Instructions:
         body: JSON.stringify({
           contents,
           systemInstruction,
-          model: 'gemini-3-flash-preview'
+          model: 'google/gemini-2.5-flash'
         })
       });
 
       if (response.status === 401) {
-        throw new Error("Gemini API key is missing. Please go to Settings -> Environment Variables and add GEMINI_API_KEY.");
+        throw new Error("OpenRouter API key is missing. Please go to Settings -> Environment Variables and add OPENROUTER_API_KEY.");
       }
 
       if (!response.ok) {

@@ -64,42 +64,69 @@ async function startServer() {
     }
   });
 
-  // Gemini Chat Proxy
+  // OpenRouter Chat Proxy
   app.post("/api/chat", async (req, res) => {
     try {
-      const genAIModule = await import("@google/genai");
-      const GoogleGenAI = genAIModule.GoogleGenAI;
-      
-      if (!GoogleGenAI) {
-        throw new Error("Failed to load GoogleGenAI from @google/genai module.");
-      }
-      
-      const rawKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+      const rawKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
       // Thorough sanitization: remove all whitespace and surrounding quotes/backticks
       const apiKey = rawKey?.replace(/\s+/g, '').replace(/^[`'"]+|[`'"]+$/g, '');
       
-      if (!apiKey || apiKey.length < 20) {
-        console.warn(`[Gemini Proxy] Key invalid or missing (Length: ${apiKey?.length || 0})`);
+      if (!apiKey || apiKey.length < 10) {
+        console.warn(`[OpenRouter Proxy] Key invalid or missing`);
         return res.status(401).json({ 
-          error: "Gemini API key is invalid or missing. Please add a valid GEMINI_API_KEY to Settings -> Environment Variables." 
+          error: "OpenRouter API key is invalid or missing. Please add a valid OPENROUTER_API_KEY to Settings -> Environment Variables." 
         });
       }
       
-      const ai = new GoogleGenAI({ apiKey });
       const { model, contents, systemInstruction } = req.body;
+      const targetModel = model || 'google/gemini-2.5-flash';
 
-      const response = await ai.models.generateContent({
-        model: model || 'gemini-3-flash-preview',
-        contents,
-        config: {
-          systemInstruction,
-          temperature: 0.7,
+      // Convert Gemini format to OpenAI format
+      const messages: { role: string; content: string }[] = [];
+      if (systemInstruction) {
+        messages.push({ role: 'system', content: systemInstruction });
+      }
+      if (Array.isArray(contents)) {
+        for (const item of contents) {
+          const text = item.parts?.[0]?.text || '';
+          const role = item.role === 'model' ? 'assistant' : 'user';
+          messages.push({ role, content: text });
         }
+      }
+
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://vu-routine-app.vercel.app',
+          'X-OpenRouter-Title': 'VU Routine App',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: targetModel,
+          messages,
+          temperature: 0.7,
+        }),
       });
 
-      res.json({ text: response.text });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("OpenRouter API error response:", errorText);
+        throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = (await response.json()) as {
+        choices?: Array<{
+          message?: {
+            content?: string;
+          };
+        }>;
+      };
+
+      const aiText = data.choices?.[0]?.message?.content || "No response received from OpenRouter.";
+      res.json({ text: aiText });
     } catch (error: unknown) {
-      console.error("Gemini Proxy Error:", error);
+      console.error("OpenRouter Proxy Error:", error);
       const message = error instanceof Error ? error.message : "Failed to generate content";
       res.status(500).json({ error: message });
     }
