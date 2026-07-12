@@ -106,6 +106,7 @@ async function startServer() {
           model: targetModel,
           messages,
           temperature: 0.7,
+          max_tokens: 1500,
         }),
       });
 

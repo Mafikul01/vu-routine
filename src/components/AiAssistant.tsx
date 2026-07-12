@@ -500,7 +500,7 @@ Instructions:
                   <Bot className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm">Mr. Mendak 🐸 <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded ml-1">v1.4</span></h3>
+                  <h3 className="font-semibold text-sm">Mr. Mendak 🐸 <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded ml-1">v1.5</span></h3>
                   <p className="text-[10px] text-primary-foreground/80">Created by Mafikul Islam</p>
                 </div>
               </div>
