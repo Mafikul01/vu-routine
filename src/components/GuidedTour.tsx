@@ -176,6 +176,25 @@ export function GuidedTour({ onComplete, onOpenMenu, isMenuOpen }: GuidedTourPro
 
   // Calculate where to place the tooltip
   const getTooltipPosition = () => {
+    const isMobile = window.innerWidth < 640;
+    if (isMobile) {
+      const centerY = coords.top - window.scrollY + coords.height / 2;
+      const isTargetInBottomHalf = centerY > window.innerHeight / 2;
+      if (isTargetInBottomHalf) {
+        return {
+          top: "24px",
+          left: "50%",
+          transform: "translateX(-50%)",
+        };
+      } else {
+        return {
+          bottom: "24px",
+          left: "50%",
+          transform: "translateX(-50%)",
+        };
+      }
+    }
+
     const spaceBelow = window.innerHeight - (coords.top - window.scrollY + coords.height);
     const spaceAbove = coords.top - window.scrollY;
     
