@@ -1607,25 +1607,13 @@ export default function Index() {
                         </div>
                       </div>
                       {info?.phone && (
-                        <div className="flex flex-col sm:flex-row gap-2 mt-2">
-                          <a 
-                            href={`tel:${normalizeBangladeshiPhone(info.phone)}`}
-                            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary/10 p-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
-                          >
-                            <Phone className="h-3.5 w-3.5 shrink-0" />
-                            <span>Call ({normalizeBangladeshiPhone(info.phone)})</span>
-                          </a>
-                          <button 
-                            onClick={(e) => {
-                              e.preventDefault();
-                              downloadVCard(info.name || name, info.phone, info.designation, info.email);
-                            }}
-                            className="flex items-center justify-center gap-2 rounded-lg bg-secondary p-2.5 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-secondary/80"
-                          >
-                            <UserPlus className="h-3.5 w-3.5 shrink-0" />
-                            <span>Save Contact</span>
-                          </button>
-                        </div>
+                        <a 
+                          href={`tel:${normalizeBangladeshiPhone(info.phone)}`}
+                          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-primary/10 p-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+                        >
+                          <Phone className="h-3.5 w-3.5 shrink-0" />
+                          <span>{normalizeBangladeshiPhone(info.phone)}</span>
+                        </a>
                       )}
                     </div>
                   );
@@ -1676,25 +1664,13 @@ export default function Index() {
                     </div>
                   </div>
                   {teacher.phone && (
-                    <div className="flex flex-col sm:flex-row gap-2 mt-2">
-                      <a 
-                        href={`tel:${normalizeBangladeshiPhone(teacher.phone)}`}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary/10 p-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
-                      >
-                        <Phone className="h-3.5 w-3.5 shrink-0" />
-                        <span>Call ({normalizeBangladeshiPhone(teacher.phone)})</span>
-                      </a>
-                      <button 
-                        onClick={(e) => {
-                          e.preventDefault();
-                          downloadVCard(teacher.name, teacher.phone, teacher.designation, teacher.email);
-                        }}
-                        className="flex items-center justify-center gap-2 rounded-lg bg-secondary p-2.5 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-secondary/80"
-                      >
-                        <UserPlus className="h-3.5 w-3.5 shrink-0" />
-                        <span>Save Contact</span>
-                      </button>
-                    </div>
+                    <a 
+                      href={`tel:${normalizeBangladeshiPhone(teacher.phone)}`}
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-primary/10 p-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+                    >
+                      <Phone className="h-3.5 w-3.5 shrink-0" />
+                      <span>{normalizeBangladeshiPhone(teacher.phone)}</span>
+                    </a>
                   )}
                 </div>
               ))}
