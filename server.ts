@@ -4,13 +4,11 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fetch from "node-fetch";
 
-
 const _filename = typeof __filename !== 'undefined' ? __filename : fileURLToPath(import.meta.url);
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(_filename);
 
 // Simple rate-limiting map to prevent users from spamming requests too fast
 const userLastRequestTimes = new Map<string, number>();
-
 
 async function startServer() {
   const app = express();
@@ -83,11 +81,8 @@ async function startServer() {
       }
       userLastRequestTimes.set(String(ip), now);
 
-      const rawKey = process.env.OPENROUTER_API_KEY;
-      // Thorough sanitization: remove all whitespace and surrounding quotes/backticks
-      const apiKey = rawKey?.replace(/\s+/g, '').replace(/^[`'"]+|[`'"]+$/g, '');
-      
-      if (!apiKey || apiKey.length < 10) {
+      const apiKey = process.env.OPENROUTER_API_KEY;
+      if (!apiKey) {
         console.warn(`[OpenRouter Proxy] Key invalid or missing`);
         return res.status(500).json({ 
           error: "Server Error: Unable to complete your request. Please check OPENROUTER_API_KEY." 
@@ -95,8 +90,8 @@ async function startServer() {
       }
       
       const { contents, systemInstruction } = req.body;
-
-      // Translate Gemini content format to OpenAI format
+      
+      // Translate messages to OpenRouter format
       const messages: { role: string; content: string }[] = [];
       if (systemInstruction) {
         messages.push({ role: "system", content: systemInstruction });
@@ -110,39 +105,32 @@ async function startServer() {
         }
       }
 
-      const model = process.env.OPENROUTER_MODEL || "google/gemini-2.5-flash";
-
-      const openRouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${apiKey}`,
-          "HTTP-Referer": process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://myapp.vercel.app",
-          "X-OpenRouter-Title": "VU Routine App",
+          "HTTP-Referer": "https://ais-dev-ivntq76xy3f5iml7tbb4az-219476684083.asia-east1.run.app",
+          "X-OpenRouter-Title": "Mr. Mendak AI",
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model,
+          model: 'google/gemini-2.5-flash',
           messages,
           temperature: 0.7
         })
       });
 
-      if (!openRouterRes.ok) {
-        const errorData = await openRouterRes.text();
-        console.error("OpenRouter API Error:", openRouterRes.status, errorData);
-        if (openRouterRes.status === 401 || openRouterRes.status === 403) {
-          return res.status(401).json({ error: "Invalid or unauthorized OpenRouter API Key." });
-        }
-        return res.status(500).json({ error: "OpenRouter Error: Unable to complete your request. Please try again later." });
-      }
-
-      const data = await openRouterRes.json() as any;
-      const aiText = data?.choices?.[0]?.message?.content || "Sorry, I could not generate a response. Please try again.";
+      const data = await response.json() as any;
       
-      res.json({ text: aiText });
-    } catch (error: unknown) {
+      if (!response.ok) {
+        console.error("OpenRouter API Error:", data);
+        throw new Error(data.error?.message || "Failed to get response from AI");
+      }
+      
+      res.json({ text: data.choices[0].message.content });
+    } catch (error: any) {
       console.error("OpenRouter API Proxy Error:", error);
-      res.status(500).json({ error: "Server Error: Unable to complete your request. Please try again later." });
+      res.status(500).json({ error: error?.message || "Server Error: Unable to complete your request. Please try again later." });
     }
   });
 
