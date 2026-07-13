@@ -116,6 +116,9 @@ export default function Index() {
   });
   const [semester, setSemester] = useState(() => Number(localStorage.getItem("routine-semester")) || 1);
   const [section, setSection] = useState(() => localStorage.getItem("routine-section") || "A");
+  const [hasSetupPreferences, setHasSetupPreferences] = useState(() => {
+    return !!localStorage.getItem("routine-semester") && !!localStorage.getItem("routine-section");
+  });
   const [selectedTeacher, setSelectedTeacher] = useState(() => localStorage.getItem("routine-teacher") || "");
   const [selectedDay, setSelectedDay] = useState(() => {
     const date = new Date();
@@ -770,10 +773,14 @@ export default function Index() {
 
   useEffect(() => {
     if (role) localStorage.setItem("routine-role", role);
-    localStorage.setItem("routine-semester", String(semester));
-    localStorage.setItem("routine-section", section);
-    localStorage.setItem("routine-teacher", selectedTeacher);
-  }, [role, semester, section, selectedTeacher]);
+    if (role === "student" && hasSetupPreferences) {
+      localStorage.setItem("routine-semester", String(semester));
+      localStorage.setItem("routine-section", section);
+    }
+    if (role === "teacher" && selectedTeacher) {
+      localStorage.setItem("routine-teacher", selectedTeacher);
+    }
+  }, [role, semester, section, selectedTeacher, hasSetupPreferences]);
 
   const handleRoleSelect = (r: Role) => {
     setRole(r);
@@ -804,11 +811,11 @@ export default function Index() {
   const currentFreeDays = useMemo(() => {
     return DAYS.filter(day => {
       const dayClasses = role === "student"
-        ? getClassesForStudent(day, semester, section, currentRoutine)
+        ? (hasSetupPreferences ? getClassesForStudent(day, semester, section, currentRoutine) : [])
         : getClassesForTeacher(day, selectedTeacher, currentRoutine);
       return dayClasses.length === 0;
     });
-  }, [role, semester, section, selectedTeacher, currentRoutine]);
+  }, [role, semester, section, selectedTeacher, currentRoutine, hasSetupPreferences]);
 
   const roomFreeDays = useMemo(() => {
     if (selectedRoom) {
@@ -819,7 +826,7 @@ export default function Index() {
 
   const classes =
     role === "student"
-      ? getClassesForStudent(selectedDay, semester, section, currentRoutine)
+      ? (hasSetupPreferences ? getClassesForStudent(selectedDay, semester, section, currentRoutine) : [])
       : getClassesForTeacher(selectedDay, selectedTeacher, currentRoutine);
 
   const filteredTeachers = teacherSearch
@@ -2208,6 +2215,79 @@ export default function Index() {
       </DialogContent>
       </Dialog>
     </div>
+
+    {/* First-Time Student Setup Dialog */}
+    <Dialog open={role === "student" && !hasSetupPreferences && !isTourOpen} onOpenChange={() => {}}>
+      <DialogContent className="sm:max-w-md p-6 pointer-events-auto [&>button]:hidden" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+        <DialogHeader className="text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <GraduationCap className="h-6 w-6" />
+          </div>
+          <DialogTitle className="font-heading text-xl font-bold tracking-tight text-center">
+            Configure Your Routine
+          </DialogTitle>
+          <p className="text-sm text-muted-foreground mt-1 text-center">
+            Please select your semester and section to customize your routine view.
+          </p>
+        </DialogHeader>
+
+        <div className="space-y-4 my-4">
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">Semester</label>
+            <Select 
+              value={String(semester)} 
+              onValueChange={(val) => setSemester(Number(val))}
+            >
+              <SelectTrigger className="font-medium h-11">
+                <SelectValue placeholder="Select Semester" />
+              </SelectTrigger>
+              <SelectContent>
+                {SEMESTERS.map(sem => (
+                  <SelectItem key={sem} value={String(sem)}>
+                    {sem}{sem === 1 ? 'st' : sem === 2 ? 'nd' : sem === 3 ? 'rd' : 'th'} Semester
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">Section</label>
+            <Select 
+              value={section} 
+              onValueChange={setSection}
+            >
+              <SelectTrigger className="font-medium h-11">
+                <SelectValue placeholder="Select Section" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableSections.map(sec => (
+                  <SelectItem key={sec} value={sec}>
+                    Section {sec}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <DialogFooter className="mt-6">
+          <button
+            onClick={() => {
+              localStorage.setItem("routine-semester", String(semester));
+              localStorage.setItem("routine-section", section);
+              setHasSetupPreferences(true);
+              toast.success("Routine configuration saved successfully!");
+            }}
+            className="w-full inline-flex justify-center items-center gap-2 rounded-xl bg-primary text-primary-foreground h-11 px-4 font-semibold hover:bg-primary/90 transition-all shadow-md"
+          >
+            <SearchCheck className="h-4 w-4" />
+            Save & View Routine
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     {/* Floating AI Assistant Widget */}
     <AiAssistant routineData={currentRoutine} semester={semester} section={section} teacherInfo={teacherInfo} />
     
