@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/select";
 import { AiAssistant } from "@/components/AiAssistant";
 
-const DEFAULT_SHEET = "https://docs.google.com/spreadsheets/d/1Sdmr60rcZeBCa2ofswUr9mxIreIj71W9HYM1RRhvfMM/edit";
+const DEFAULT_SHEET = "https://docs.google.com/spreadsheets/d/1Sdmr60rcZeBCa2ofswUr9mxIreIj71W9HYM1RRhvfMM/edit?usp=drivesdk";
 const INFO_GID = "989827005";
 
 const SEMESTER_GIDS: Record<number, string> = {
@@ -49,7 +49,6 @@ const SEMESTER_GIDS: Record<number, string> = {
   6: "1687685897",
   7: "2130237812",
   8: "1780568258",
-  9: "614628609",
 };
 
 type Role = "student" | "teacher" | null;
@@ -727,7 +726,22 @@ export default function Index() {
   }, [adminSettings.mainSheetUrl, adminSettings.infoGid]);
 
   const teachers = getTeacherList(currentRoutine);
-  const availableSections = useMemo(() => SEMESTER_SECTIONS[semester] || ["A"], [semester]);
+  const availableSections = useMemo(() => {
+    // Dynamically retrieve unique sections loaded in currentRoutine for the selected semester
+    const dynamicSections = Array.from(
+      new Set(
+        currentRoutine
+          .filter(e => e.semester === semester)
+          .map(e => e.section)
+          .filter(Boolean)
+      )
+    ).sort();
+
+    if (dynamicSections.length > 0) {
+      return dynamicSections;
+    }
+    return SEMESTER_SECTIONS[semester] || ["A"];
+  }, [semester, currentRoutine]);
 
   // Reset section if not valid for current semester
   useEffect(() => {
@@ -1825,7 +1839,7 @@ export default function Index() {
             <div className="text-center space-y-1.5">
               <h3 className="font-heading text-2xl font-bold">{adminSettings.devName || "Mafikul Islam"}</h3>
               <p className="text-sm font-medium text-primary">Student ID: {adminSettings.devStudentId || "232311070"}</p>
-              <p className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">33rd - 6th B</p>
+              <p className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">33rd - 7th B</p>
               <p className="text-xs text-muted-foreground pt-2">
                 Developer & Maintainer of the CSE Class Routine App
               </p>

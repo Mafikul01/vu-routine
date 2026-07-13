@@ -22,18 +22,17 @@ export const SLOTS = [
   { slot: 6, start: "02:55 PM", end: "04:00 PM" },
 ] as const;
 
-export const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+export const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 
 export const SEMESTER_SECTIONS: Record<number, string[]> = {
-  1: ["A", "B", "C"],
+  1: ["A", "B", "C", "D", "E", "F"],
   2: ["A", "B", "C", "D", "E", "F", "G"],
-  3: ["A", "B", "C"],
+  3: ["A", "B", "C", "D", "E", "F"],
   4: ["A", "B", "C", "D", "E", "F", "G"],
-  5: ["A", "B", "C", "D"],
+  5: ["A", "B", "C", "D", "E", "F"],
   6: ["A", "B", "C", "D", "E", "F"],
-  7: ["A", "B"],
+  7: ["A", "B", "C", "D", "E", "F"],
   8: ["A", "B", "C", "D", "E", "F"],
-  9: ["A", "B"],
 };
 
 export const routineData: ClassEntry[] = [];

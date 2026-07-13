@@ -74,33 +74,74 @@ export function parseRoutineCsv(csvData: string, fallbackSemester: number = 1): 
 export function parseTeacherCsv(csvData: string): Teacher[] {
   const parsed = Papa.parse(csvData, { skipEmptyLines: true }).data as string[][];
   const teachers: Teacher[] = [];
+
+  const getInitials = (nameStr: string): string => {
+    if (!nameStr) return "";
+    const cleaned = nameStr
+      .replace(/^(Prof\.|Dr\.|Mr\.|Mrs\.|Ms\.|Md\.)/g, "")
+      .replace(/[^a-zA-Z\s]/g, "")
+      .trim();
+    const parts = cleaned.split(/\s+/).filter(Boolean);
+    if (parts.length === 1 && parts[0].length <= 3) return parts[0].toUpperCase();
+    return parts.map(p => p[0]).join("").toUpperCase();
+  };
   
-  for(let i = 2; i < parsed.length; i++){
+  for (let i = 2; i < parsed.length; i++) {
     const row = parsed[i];
-    if (row[2] && row[2].trim()) {
+    if (!row) continue;
+
+    // 1. Main teacher table: Name is row[2], Designation is row[3], Email is row[4], Phone is row[5]
+    if (row[2] && row[2].trim() && row[2] !== "Name" && row[2] !== "Sl") {
+      const name = row[2].trim().replace(/\s*\(cse\)/i, "").trim();
+      const designation = row[3]?.trim() || "";
+      const email = row[4]?.trim() || "";
+      const phone = row[5]?.trim() || "";
+      
       teachers.push({
-        initials: row[1]?.trim() || "",
-        name: row[2]?.trim(),
-        designation: row[3]?.trim() || "",
-        department: row[4]?.trim() || "CSE",
-        phone: row[6]?.trim() || "",
-        email: row[7]?.trim() || "",
+        initials: getInitials(name),
+        name,
+        designation,
+        department: "CSE",
+        phone,
+        email,
         officeRoom: ""
       });
     }
     
-    // Sometimes there are additional teachers in columns 11 and 12
-    if (row[11] && row[11].trim() && row[12] && row[12].trim()) {
+    // 2. Routine committee table: Initial is row[11], Name is row[12], Phone is row[13]
+    if (row[11] && row[11].trim() && row[11] !== "Teacher's Initial" && row[12] && row[12].trim()) {
+      const initials = row[11].trim();
+      const name = row[12].trim().replace(/\s*\(cse\)/i, "").trim();
+      const phone = row[13]?.trim() || "";
+      
       teachers.push({
-        initials: row[10]?.trim() || "",
-        name: row[12]?.trim() || row[11]?.trim(),
-        designation: "",
+        initials,
+        name,
+        designation: "Routine Committee",
         department: "CSE",
-        phone: row[13]?.trim() || "",
+        phone,
         email: "",
         officeRoom: ""
       });
     }
   }
-  return teachers;
+
+  // De-duplicate by normalized name
+  const uniqueTeachers: Record<string, Teacher> = {};
+  for (const t of teachers) {
+    const key = t.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!uniqueTeachers[key]) {
+      uniqueTeachers[key] = t;
+    } else {
+      uniqueTeachers[key] = {
+        ...uniqueTeachers[key],
+        initials: t.initials || uniqueTeachers[key].initials,
+        designation: (uniqueTeachers[key].designation === "Routine Committee" || !uniqueTeachers[key].designation) ? t.designation : uniqueTeachers[key].designation,
+        phone: t.phone || uniqueTeachers[key].phone,
+        email: t.email || uniqueTeachers[key].email,
+      };
+    }
+  }
+
+  return Object.values(uniqueTeachers);
 }
