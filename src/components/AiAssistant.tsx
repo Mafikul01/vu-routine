@@ -180,7 +180,7 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
       },
       {
         keywords: ["who created you", "who is your developer", "who made you", "your creator"],
-        text: "I was created by Mafikul Islam (Student ID: 232311070, 33rd - 6th B). GitHub: https://github.com/mafikul01. WhatsApp: +8801788302771."
+        text: "I was created by Mafikul Islam (Student ID: 232311070, 33rd - 7th B). GitHub: https://github.com/mafikul01. WhatsApp: +8801788302771."
       },
       {
         keywords: ["slot 1 time", "when is slot 1", "what time is slot 1"],
@@ -317,7 +317,7 @@ Instructions:
 - When asked about free rooms, check the Routine Context for rooms NOT occupied during that slot today.
 - ALWAYS refer to the Slot Time Mapping above when mentioning class times.
 - DO NOT end your messages with any signature, name, or repetitive closing phrases like "How else can I assist you?".
-- You were created by Mafikul Islam (Student ID: 232311070, 33rd - 6th B). GitHub: https://github.com/mafikul01. WhatsApp: +8801788302771 (only mention these details if specifically asked about your creator/developer).
+- You were created by Mafikul Islam (Student ID: 232311070, 33rd - 7th B). GitHub: https://github.com/mafikul01. WhatsApp: +8801788302771 (only mention these details if specifically asked about your creator/developer).
 - If the user asks for their student ID, tell them their student ID is 232311070.
 - Stay in character as a helpful assistant, but be direct.
 `;
@@ -335,12 +335,12 @@ Instructions:
         body: JSON.stringify({
           contents,
           systemInstruction,
-          model: 'google/gemini-2.5-flash'
+          model: 'gemini-3.5-flash'
         })
       });
 
       if (response.status === 401) {
-        throw new Error("OpenRouter API key is missing. Please go to Settings -> Environment Variables and add OPENROUTER_API_KEY.");
+        throw new Error("Gemini API key is missing. Please go to Settings -> Secrets in AI Studio and add GEMINI_API_KEY, or set GEMINI_API_KEY in your deployment environment variables.");
       }
 
       if (!response.ok) {
@@ -406,6 +406,7 @@ Instructions:
             transition={{ type: 'spring', delay: isOpen ? 0 : 0.5 }}
           >
             <motion.button 
+              id="tour-ai-chat-btn"
               initial={{ x: 20, opacity: 0 }}
               animate={{ 
                 x: 0, 

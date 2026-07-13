@@ -86,9 +86,9 @@ export function DayPicker({ selectedDay, onSelectDay, freeDays = [] }: DayPicker
   }, [selectedDay, upcomingDates, selectedUpcomingId]);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div id="tour-day-picker-container" className="flex flex-col gap-2">
       <div className="flex justify-end pr-1">
-        <label className="flex items-center gap-1.5 cursor-pointer group">
+        <label id="tour-upcoming-label" className="flex items-center gap-1.5 cursor-pointer group">
           <div className={`w-3.5 h-3.5 rounded flex items-center justify-center transition-colors ${showUpcoming ? 'bg-primary border-primary text-primary-foreground' : 'border border-muted-foreground/40 text-transparent group-hover:border-primary/50'}`}>
             <Check className="w-2.5 h-2.5" />
           </div>

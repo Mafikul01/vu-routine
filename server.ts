@@ -3,9 +3,85 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import fetch from "node-fetch";
+import { GoogleGenAI } from "@google/genai";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Simple rate-limiting map to prevent users from spamming requests too fast
+const userLastRequestTimes = new Map<string, number>();
+
+interface GeminiResponse {
+  text?: string;
+}
+
+/**
+ * Robust helper to query Gemini API with exponential backoff and jitter
+ * if we run into 429 rate limit errors, quota limits, or 503 service unavailable errors.
+ * If the preferred model fails completely, it will try falling back to the highly stable gemini-2.5-flash.
+ */
+async function generateContentWithRetry(
+  ai: GoogleGenAI, 
+  model: string, 
+  contents: unknown, 
+  config: Record<string, unknown>, 
+  maxRetries = 3, 
+  initialDelay = 1500
+): Promise<GeminiResponse> {
+  let currentModel = model;
+  const delay = initialDelay;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await ai.models.generateContent({
+        model: currentModel,
+        contents: contents as { role: string; parts: { text: string }[] }[],
+        config: config as Record<string, unknown>,
+      });
+    } catch (error: unknown) {
+      console.error(`[Gemini API Attempt ${attempt}/${maxRetries} with ${currentModel} Failed]:`, error);
+      
+      const errStr = String(error).toLowerCase();
+      const errObj = error as { status?: number; statusCode?: number };
+      const status = errObj?.status || errObj?.statusCode;
+      
+      const isRateLimit = errStr.includes("429") || 
+                          errStr.includes("resource_exhausted") || 
+                          errStr.includes("quota") || 
+                          errStr.includes("rate limit") || 
+                          errStr.includes("limit") ||
+                          status === 429;
+
+      const isUnavailable = errStr.includes("503") ||
+                            errStr.includes("unavailable") ||
+                            errStr.includes("service unavailable") ||
+                            errStr.includes("demand") ||
+                            status === 503;
+                          
+      if ((isRateLimit || isUnavailable) && attempt < maxRetries) {
+        // Exponential backoff with random jitter
+        const backoffTime = delay * Math.pow(2, attempt - 1) * (0.8 + Math.random() * 0.4);
+        console.warn(`[Gemini API] Retryable error hit (${isRateLimit ? 'Rate Limit' : 'Unavailable'}). Retrying in ${Math.round(backoffTime)}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, backoffTime));
+        continue;
+      }
+
+      // If we failed with gemini-3.5-flash and have a fallback available, try gemini-2.0-flash
+      if (currentModel === "gemini-3.5-flash") {
+        console.warn(`[Gemini API] Primary model ${currentModel} failed. Falling back to stable gemini-2.0-flash...`);
+        currentModel = "gemini-2.0-flash";
+        // Reset attempts and try with fallback model
+        return await ai.models.generateContent({
+          model: currentModel,
+          contents: contents as { role: string; parts: { text: string }[] }[],
+          config: config as Record<string, unknown>,
+        });
+      }
+
+      throw error;
+    }
+  }
+}
 
 async function startServer() {
   const app = express();
@@ -64,70 +140,63 @@ async function startServer() {
     }
   });
 
-  // OpenRouter Chat Proxy
+  // Gemini Chat Proxy
   app.post("/api/chat", async (req, res) => {
     try {
-      const rawKey = process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+      // Simple IP rate limiter to protect the endpoint from rapid spamming
+      const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+      const now = Date.now();
+      const lastRequest = userLastRequestTimes.get(String(ip)) || 0;
+      if (now - lastRequest < 800) { // Cooldown of 800ms between requests from the same IP
+        return res.status(429).json({ 
+          error: "You are asking questions a bit too fast. Please wait a moment before sending another message." 
+        });
+      }
+      userLastRequestTimes.set(String(ip), now);
+
+      const rawKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
       // Thorough sanitization: remove all whitespace and surrounding quotes/backticks
       const apiKey = rawKey?.replace(/\s+/g, '').replace(/^[`'"]+|[`'"]+$/g, '');
       
       if (!apiKey || apiKey.length < 10) {
-        console.warn(`[OpenRouter Proxy] Key invalid or missing`);
+        console.warn(`[Gemini Proxy] Key invalid or missing`);
         return res.status(401).json({ 
-          error: "OpenRouter API key is invalid or missing. Please add a valid OPENROUTER_API_KEY to Settings -> Environment Variables." 
+          error: "Gemini API key is invalid or missing. Please add a valid GEMINI_API_KEY in the Environment Settings (Vercel or AI Studio Settings)." 
         });
       }
-      
-      const { model, contents, systemInstruction } = req.body;
-      const targetModel = model || 'google/gemini-2.5-flash';
 
-      // Convert Gemini format to OpenAI format
-      const messages: { role: string; content: string }[] = [];
-      if (systemInstruction) {
-        messages.push({ role: 'system', content: systemInstruction });
-      }
-      if (Array.isArray(contents)) {
-        for (const item of contents) {
-          const text = item.parts?.[0]?.text || '';
-          const role = item.role === 'model' ? 'assistant' : 'user';
-          messages.push({ role, content: text });
+      const { contents, systemInstruction } = req.body;
+
+      // Initialize the Gemini client as guided
+      const ai = new GoogleGenAI({
+        apiKey: apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
         }
-      }
-
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'HTTP-Referer': 'https://vu-routine-app.vercel.app',
-          'X-OpenRouter-Title': 'VU Routine App',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: targetModel,
-          messages,
-          temperature: 0.7,
-          max_tokens: 1500,
-        }),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("OpenRouter API error response:", errorText);
-        throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
+      // Configure prompt and system instructions
+      const config: Record<string, unknown> = {
+        temperature: 0.7,
+      };
+      if (systemInstruction) {
+        config.systemInstruction = systemInstruction;
       }
 
-      const data = (await response.json()) as {
-        choices?: Array<{
-          message?: {
-            content?: string;
-          };
-        }>;
-      };
+      // Query Gemini API with the retry helper to gracefully handle limits / 429 errors
+      const response = await generateContentWithRetry(
+        ai,
+        "gemini-3.5-flash", // Native recommended Gemini 3.5 model
+        contents,
+        config
+      );
 
-      const aiText = data.choices?.[0]?.message?.content || "No response received from OpenRouter.";
+      const aiText = response?.text || "Sorry, I could not generate a response. Please try again.";
       res.json({ text: aiText });
     } catch (error: unknown) {
-      console.error("OpenRouter Proxy Error:", error);
+      console.error("Gemini API Proxy Error:", error);
       const message = error instanceof Error ? error.message : "Failed to generate content";
       res.status(500).json({ error: message });
     }

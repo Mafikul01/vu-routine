@@ -17,7 +17,7 @@ import {
   ClassEntry,
   routineData as staticRoutineData,
 } from "@/data/routineData";
-import { GraduationCap, User, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, CodeXml, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote, FileText, Bus, Edit2, Save } from "lucide-react";
+import { GraduationCap, User, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, CodeXml, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote, FileText, Bus, Edit2, Save, Sparkles } from "lucide-react";
 import { useTheme } from "@/components/ThemeContext";
 import { toast } from "@/components/ui/sonner";
 import { motion, AnimatePresence } from "motion/react";
@@ -36,6 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AiAssistant } from "@/components/AiAssistant";
+import { GuidedTour } from "@/components/GuidedTour";
 
 const DEFAULT_SHEET = "https://docs.google.com/spreadsheets/d/1Sdmr60rcZeBCa2ofswUr9mxIreIj71W9HYM1RRhvfMM/edit?usp=drivesdk";
 const INFO_GID = "989827005";
@@ -93,13 +94,15 @@ export interface BusTrip {
   trip: string;
   fromUniversity: string;
   fromCity: string;
+  fromVearipara?: string;
+  fromCourtStation?: string;
 }
 
 const DEFAULT_BUS_SCHEDULE: BusTrip[] = [
-  { trip: "Trip 1", fromUniversity: "-", fromCity: "08:10 AM" },
-  { trip: "Trip 2", fromUniversity: "-", fromCity: "09:20 AM" },
-  { trip: "Trip 3", fromUniversity: "12:25 PM", fromCity: "01:10 PM" },
-  { trip: "Trip 4", fromUniversity: "04:15 PM", fromCity: "-" }
+  { trip: "Trip 1", fromUniversity: "-", fromVearipara: "08:00 AM", fromCourtStation: "08:15 AM", fromCity: "08:00 AM (V) / 08:15 AM (C)" },
+  { trip: "Trip 2", fromUniversity: "-", fromVearipara: "09:20 AM", fromCourtStation: "09:20 AM", fromCity: "09:20 AM" },
+  { trip: "Trip 3", fromUniversity: "12:25 PM", fromVearipara: "01:10 PM", fromCourtStation: "01:10 PM", fromCity: "01:10 PM" },
+  { trip: "Trip 4", fromUniversity: "04:15 PM", fromVearipara: "-", fromCourtStation: "-", fromCity: "-" }
 ];
 
 export default function Index() {
@@ -177,6 +180,7 @@ export default function Index() {
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
   const [isBusScheduleOpen, setIsBusScheduleOpen] = useState(false);
   const [isEditingBusSchedule, setIsEditingBusSchedule] = useState(false);
+  const [isTourOpen, setIsTourOpen] = useState(false);
   const [localToast, setLocalToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [toastSwipeOffset, setToastSwipeOffset] = useState({ x: 0, y: 0 });
   const [dirSearchTerm, setDirSearchTerm] = useState("");
@@ -558,6 +562,20 @@ export default function Index() {
       setIsAdmin(false);
     }
   }, [user, adminSettings.adminEmails]);
+
+  useEffect(() => {
+    if (role && !isChangingRole) {
+      const tourCompleted = localStorage.getItem("routine-tour-completed") === "true";
+      if (!tourCompleted) {
+        const timer = setTimeout(() => {
+          setIsTourOpen(true);
+        }, 600);
+        return () => clearTimeout(timer);
+      }
+    } else {
+      setIsTourOpen(false);
+    }
+  }, [role, isChangingRole]);
 
   const handleLogin = async () => {
     try {
@@ -955,6 +973,7 @@ export default function Index() {
               <RefreshCcw className="h-4 w-4 text-secondary-foreground" />
             </button>
             <button
+              id="tour-switch-role"
               onClick={() => {
                 window.history.pushState({ modal: "changeRole" }, "");
                 setIsChangingRole(true);
@@ -965,6 +984,7 @@ export default function Index() {
               Switch
             </button>
             <button
+              id="tour-menu-button"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="flex items-center justify-center rounded-lg bg-secondary p-2 transition-all hover:bg-secondary/80"
               title="Menu"
@@ -974,6 +994,7 @@ export default function Index() {
           </div>
           
           <button
+            id="tour-room-finder"
             onClick={() => setIsRoomFinderOpen(true)}
             className="flex items-center gap-2 rounded-full border border-blue-200 dark:border-blue-800/60 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-300 transition-all shadow-sm active:scale-95 absolute top-[calc(100%+8px)] right-0"
           >
@@ -1038,11 +1059,22 @@ export default function Index() {
                 Make Cover Page
               </button>
               <button
+                id="tour-dark-mode"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
               >
                 {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 {theme === "dark" ? "Light Mode" : "Dark Mode"}
+              </button>
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  setIsTourOpen(true);
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
+              >
+                <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+                Quick Guide Tour
               </button>
               <div className="border-t my-1"></div>
               {!user ? (
@@ -1693,34 +1725,68 @@ export default function Index() {
           <div className="flex-1 overflow-y-auto px-6 pb-6">
             {!isEditingBusSchedule ? (
               <>
-                <p className="text-xs text-muted-foreground mb-4 text-center bg-secondary/50 py-1.5 rounded-full inline-block px-4 mx-auto w-fit block">
-                  Effective from April 15, 2026
+                <p className="text-xs text-muted-foreground mb-4 text-center bg-secondary/50 py-1.5 rounded-full inline-block px-4 mx-auto w-fit block font-medium">
+                  Effective from July 14, 2026
                 </p>
                 
                 <div className="rounded-xl border overflow-hidden">
                   <table className="w-full text-sm text-left">
                     <thead className="bg-secondary/50 text-xs text-muted-foreground uppercase tracking-wider">
                       <tr>
-                        <th className="py-3 px-4 font-semibold border-b"></th>
-                        <th className="py-3 px-4 font-semibold border-b">From University</th>
-                        <th className="py-3 px-4 font-semibold border-b">From City (Court Station / Veripara Mor)</th>
+                        <th className="py-3 px-4 font-semibold border-b">Trip No</th>
+                        <th className="py-3 px-4 font-semibold border-b">From Varsity</th>
+                        <th className="py-3 px-4 font-semibold border-b">Vearipara (R-1)</th>
+                        <th className="py-3 px-4 font-semibold border-b">Court Stn (R-2)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y text-sm">
                       {(adminSettings.busSchedule || []).map((trip, idx) => (
                         <tr key={idx} className="hover:bg-muted/50 transition-colors">
-                          <td className="py-3 px-4 font-medium whitespace-nowrap">Trip - {trip.trip.replace(/^Trip\s*-?\s*/i, '').trim()}</td>
-                          <td className={`py-3 px-4 ${trip.fromUniversity === '-' || !trip.fromUniversity ? 'text-muted-foreground text-center' : 'font-bold text-emerald-600 dark:text-emerald-400'}`}>
+                          <td className="py-3 px-4 font-medium whitespace-nowrap text-foreground">Trip - {trip.trip.replace(/^Trip\s*-?\s*/i, '').trim()}</td>
+                          <td className={`py-3 px-4 ${trip.fromUniversity === '-' || !trip.fromUniversity ? 'text-muted-foreground' : 'font-bold text-emerald-600 dark:text-emerald-400'}`}>
                             {trip.fromUniversity || '-'}
                           </td>
-                          <td className={`py-3 px-4 ${trip.fromCity === '-' || !trip.fromCity ? 'text-muted-foreground text-center' : 'font-bold text-indigo-600 dark:text-indigo-400'}`}>
-                            {trip.fromCity || '-'}
+                          <td className={`py-3 px-4 ${(!trip.fromVearipara || trip.fromVearipara === '-') && (!trip.fromCity || trip.fromCity === '-') ? 'text-muted-foreground' : 'font-bold text-indigo-600 dark:text-indigo-400'}`}>
+                            {trip.fromVearipara || trip.fromCity || '-'}
+                          </td>
+                          <td className={`py-3 px-4 ${(!trip.fromCourtStation || trip.fromCourtStation === '-') && (!trip.fromCity || trip.fromCity === '-') ? 'text-muted-foreground' : 'font-bold text-violet-600 dark:text-violet-400'}`}>
+                            {trip.fromCourtStation || trip.fromCity || '-'}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+
+                <div className="mt-4 border rounded-xl p-4 bg-muted/20 space-y-3">
+                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                    <svg className="h-4 w-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    </svg>
+                    Bus Routes Stoppages
+                  </h4>
+                  <div className="space-y-2.5 text-xs text-muted-foreground">
+                    <div className="space-y-1">
+                      <p className="font-semibold text-primary/95 flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                        Route 1 (Vearipara More to University)
+                      </p>
+                      <p className="leading-relaxed pl-3 border-l border-indigo-200 dark:border-indigo-900 ml-1">
+                        Vearipara More ➔ C&B More ➔ Fire Service More ➔ Museum More ➔ Moni Chattar ➔ Zero Point ➔ Alupatti ➔ Hadir More ➔ Talaimari ➔ Northern More ➔ Bhadra More ➔ Varendra University
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-semibold text-primary/95 flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-violet-500"></span>
+                        Route 2 (Court Station to University)
+                      </p>
+                      <p className="leading-relaxed pl-3 border-l border-violet-200 dark:border-violet-900 ml-1">
+                        Court Station ➔ Tultuli Para ➔ Dingadoba Mission More ➔ Daspukur More ➔ City Bypass More ➔ Bornali More ➔ Nagar Bhaban More ➔ Railgate ➔ Shalbagan Bazar ➔ Biman Chattar ➔ Varendra University
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="mt-4 p-3 rounded-lg bg-orange-50 dark:bg-orange-950/20 text-orange-800 dark:text-orange-200 border border-orange-100 dark:border-orange-900/50 flex items-start gap-2">
                   <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                   <p className="text-xs">Schedule is subject to change. Please confirm with university transport for the most up-to-date timings.</p>
@@ -1745,41 +1811,53 @@ export default function Index() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                        <div>
-                         <label className="text-[10px] uppercase font-bold text-muted-foreground mb-1 block">Trip Name</label>
-                         <input 
-                           value={trip.trip}
-                           onChange={(e) => {
-                             const updated = [...newBusSchedule];
-                             updated[idx].trip = e.target.value;
-                             setNewBusSchedule(updated);
-                           }}
-                           className="w-full rounded-lg border bg-background p-1.5 text-xs outline-none focus:border-primary"
-                         />
-                       </div>
-                       <div></div>
-                       <div>
-                         <label className="text-[10px] uppercase font-bold text-muted-foreground mb-1 block">From Varsity</label>
-                         <input 
-                           value={trip.fromUniversity}
-                           onChange={(e) => {
-                             const updated = [...newBusSchedule];
-                             updated[idx].fromUniversity = e.target.value;
-                             setNewBusSchedule(updated);
-                           }}
-                           className="w-full rounded-lg border bg-background p-1.5 text-xs outline-none focus:border-primary"
-                         />
+                          <label className="text-[10px] uppercase font-bold text-muted-foreground mb-1 block">Trip Name</label>
+                          <input 
+                            value={trip.trip}
+                            onChange={(e) => {
+                              const updated = [...newBusSchedule];
+                              updated[idx].trip = e.target.value;
+                              setNewBusSchedule(updated);
+                            }}
+                            className="w-full rounded-lg border bg-background p-1.5 text-xs outline-none focus:border-primary"
+                          />
                        </div>
                        <div>
-                         <label className="text-[10px] uppercase font-bold text-muted-foreground mb-1 block">From City</label>
-                         <input 
-                           value={trip.fromCity}
-                           onChange={(e) => {
-                             const updated = [...newBusSchedule];
-                             updated[idx].fromCity = e.target.value;
-                             setNewBusSchedule(updated);
-                           }}
-                           className="w-full rounded-lg border bg-background p-1.5 text-xs outline-none focus:border-primary"
-                         />
+                          <label className="text-[10px] uppercase font-bold text-muted-foreground mb-1 block">From Varsity</label>
+                          <input 
+                            value={trip.fromUniversity}
+                            onChange={(e) => {
+                              const updated = [...newBusSchedule];
+                              updated[idx].fromUniversity = e.target.value;
+                              setNewBusSchedule(updated);
+                            }}
+                            className="w-full rounded-lg border bg-background p-1.5 text-xs outline-none focus:border-primary"
+                          />
+                       </div>
+                       <div>
+                          <label className="text-[10px] uppercase font-bold text-muted-foreground mb-1 block">From Vearipara</label>
+                          <input 
+                            value={trip.fromVearipara || trip.fromCity || ""}
+                            onChange={(e) => {
+                              const updated = [...newBusSchedule];
+                              updated[idx].fromVearipara = e.target.value;
+                              updated[idx].fromCity = e.target.value;
+                              setNewBusSchedule(updated);
+                            }}
+                            className="w-full rounded-lg border bg-background p-1.5 text-xs outline-none focus:border-primary"
+                          />
+                       </div>
+                       <div>
+                          <label className="text-[10px] uppercase font-bold text-muted-foreground mb-1 block">From Court Stn</label>
+                          <input 
+                            value={trip.fromCourtStation || trip.fromCity || ""}
+                            onChange={(e) => {
+                              const updated = [...newBusSchedule];
+                              updated[idx].fromCourtStation = e.target.value;
+                              setNewBusSchedule(updated);
+                            }}
+                            className="w-full rounded-lg border bg-background p-1.5 text-xs outline-none focus:border-primary"
+                          />
                        </div>
                     </div>
                   </div>
@@ -1788,7 +1866,7 @@ export default function Index() {
                 <div className="flex justify-center flex-col gap-2 pt-2">
                   <button
                     onClick={() => {
-                      setNewBusSchedule([...newBusSchedule, { trip: `Trip ${newBusSchedule.length + 1}`, fromUniversity: "-", fromCity: "-" }]);
+                      setNewBusSchedule([...newBusSchedule, { trip: `Trip ${newBusSchedule.length + 1}`, fromUniversity: "-", fromVearipara: "-", fromCourtStation: "-", fromCity: "-" }]);
                     }}
                     className="w-full rounded-xl border border-dashed border-primary/50 text-primary py-2.5 text-sm font-bold hover:bg-primary/5 transition-colors"
                   >
@@ -1815,7 +1893,7 @@ export default function Index() {
           </div>
         </DialogContent>
       </Dialog>
-
+      
       {/* Developer Info Dialog */}
       <Dialog open={isDevInfoOpen} onOpenChange={setIsDevInfoOpen}>
         <DialogContent className="sm:max-w-md">
@@ -2132,6 +2210,14 @@ export default function Index() {
     </div>
     {/* Floating AI Assistant Widget */}
     <AiAssistant routineData={currentRoutine} semester={semester} section={section} teacherInfo={teacherInfo} />
+    
+    {isTourOpen && (
+      <GuidedTour 
+        onComplete={() => setIsTourOpen(false)} 
+        onOpenMenu={(open) => setIsMenuOpen(open)}
+        isMenuOpen={isMenuOpen}
+      />
+    )}
     </>
   );
 }
