@@ -237,7 +237,7 @@ export function GuidedTour({ onComplete, onOpenMenu, isMenuOpen }: GuidedTourPro
   const tooltipStyle = getTooltipPosition();
 
   return (
-    <div className="fixed inset-0 z-[100] pointer-events-none overflow-hidden font-sans">
+    <div className="fixed inset-0 z-[20000] pointer-events-none overflow-hidden font-sans">
       {/* Semi-transparent dark overlay */}
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-[1px] pointer-events-auto"
@@ -246,7 +246,7 @@ export function GuidedTour({ onComplete, onOpenMenu, isMenuOpen }: GuidedTourPro
 
       {/* Spotlight highlight overlay */}
       <motion.div
-        className="absolute border-2 border-primary bg-transparent rounded-xl shadow-[0_0_0_9999px_rgba(0,0,0,0.6)] z-[101] pointer-events-none transition-all duration-300"
+        className="absolute border-2 border-primary bg-transparent rounded-xl shadow-[0_0_0_9999px_rgba(0,0,0,0.6)] z-[20001] pointer-events-none transition-all duration-300"
         animate={{
           top: coords.top - 6,
           left: coords.left - 6,
@@ -258,7 +258,7 @@ export function GuidedTour({ onComplete, onOpenMenu, isMenuOpen }: GuidedTourPro
 
       {/* Floating Tour Dialog Box */}
       <div
-        className="absolute z-[102] pointer-events-auto w-[calc(100vw-32px)] max-w-sm"
+        className="absolute z-[20002] pointer-events-auto w-[calc(100vw-32px)] max-w-sm"
         style={tooltipStyle}
       >
         <motion.div
