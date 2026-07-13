@@ -340,7 +340,14 @@ Instructions:
       });
 
       if (!response.ok) {
-        throw new Error("Server Error: Unable to complete your request. Please try again later.");
+        let errorMsg = "Server Error: Unable to complete your request. Please try again later.";
+        try {
+          const errorData = await response.json();
+          if (errorData.error) errorMsg = errorData.error;
+        } catch (e) {
+          // fallback to default error
+        }
+        throw new Error(errorMsg);
       }
 
       const data = await response.json();

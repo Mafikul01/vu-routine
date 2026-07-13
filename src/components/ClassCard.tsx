@@ -1,4 +1,6 @@
-import { ClassEntry, SLOTS, cleanTeacherName } from "@/data/routineData";
+import { ClassEntry, SLOTS, cleanTeacherName, normalizeTeacherName } from "@/data/routineData";
+import { COURSE_NAMES } from "@/constants";
+import { Teacher } from "@/types";
 
 const slotColors: Record<number, string> = {
   1: "border-l-slot-1 bg-slot-1/5",
@@ -12,9 +14,10 @@ const slotColors: Record<number, string> = {
 interface ClassCardProps {
   entry: ClassEntry;
   showSection?: boolean;
+  teacherInfo?: Teacher[];
 }
 
-export function ClassCard({ entry, showSection = false }: ClassCardProps) {
+export function ClassCard({ entry, showSection = false, teacherInfo = [] }: ClassCardProps) {
   const slotInfo = SLOTS.find(s => s.slot === entry.slot);
   const displayStartTime = entry.startTime || entry.slotTime || slotInfo?.start;
   const displayEndTime = entry.endTime || slotInfo?.end;
@@ -24,6 +27,18 @@ export function ClassCard({ entry, showSection = false }: ClassCardProps) {
     if (n === 2) return "2nd";
     if (n === 3) return "3rd";
     return `${n}th`;
+  };
+
+  const getTeacherDisplayName = (name: string) => {
+    const cleaned = cleanTeacherName(name);
+    if (!teacherInfo || teacherInfo.length === 0) return cleaned;
+    const normName = normalizeTeacherName(cleaned);
+    const matched = teacherInfo.find(t => {
+      const normTName = normalizeTeacherName(t.name);
+      const normTInitials = normalizeTeacherName(t.initials || "");
+      return normTName.includes(normName) || normName.includes(normTName) || (normTInitials && normTInitials === normName);
+    });
+    return matched ? cleanTeacherName(matched.name) : cleaned;
   };
   
   return (
@@ -50,8 +65,14 @@ export function ClassCard({ entry, showSection = false }: ClassCardProps) {
               </span>
             )}
           </h3>
-          <p className="text-xs text-muted-foreground mt-2 font-medium">
-            {entry.teachers.map(t => cleanTeacherName(t)).join(", ")}
+          {COURSE_NAMES[entry.course] && (
+            <p className="text-xs text-muted-foreground/90 mt-1 font-medium italic">
+              {COURSE_NAMES[entry.course]}
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground mt-2.5 font-semibold flex items-center gap-1">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />
+            {entry.teachers.map(t => getTeacherDisplayName(t)).join(", ")}
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">

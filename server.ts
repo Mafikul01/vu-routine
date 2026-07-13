@@ -3,85 +3,14 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import fetch from "node-fetch";
-import { GoogleGenAI } from "@google/genai";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+
+const _filename = typeof __filename !== 'undefined' ? __filename : fileURLToPath(import.meta.url);
+const _dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(_filename);
 
 // Simple rate-limiting map to prevent users from spamming requests too fast
 const userLastRequestTimes = new Map<string, number>();
 
-interface GeminiResponse {
-  text?: string;
-}
-
-/**
- * Robust helper to query Gemini API with exponential backoff and jitter
- * if we run into 429 rate limit errors, quota limits, or 503 service unavailable errors.
- * If the preferred model fails completely, it will try falling back to the highly stable gemini-2.5-flash.
- */
-async function generateContentWithRetry(
-  ai: GoogleGenAI, 
-  model: string, 
-  contents: unknown, 
-  config: Record<string, unknown>, 
-  maxRetries = 3, 
-  initialDelay = 1500
-): Promise<GeminiResponse> {
-  let currentModel = model;
-  const delay = initialDelay;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await ai.models.generateContent({
-        model: currentModel,
-        contents: contents as { role: string; parts: { text: string }[] }[],
-        config: config as Record<string, unknown>,
-      });
-    } catch (error: unknown) {
-      console.error(`[Gemini API Attempt ${attempt}/${maxRetries} with ${currentModel} Failed]:`, error);
-      
-      const errStr = String(error).toLowerCase();
-      const errObj = error as { status?: number; statusCode?: number };
-      const status = errObj?.status || errObj?.statusCode;
-      
-      const isRateLimit = errStr.includes("429") || 
-                          errStr.includes("resource_exhausted") || 
-                          errStr.includes("quota") || 
-                          errStr.includes("rate limit") || 
-                          errStr.includes("limit") ||
-                          status === 429;
-
-      const isUnavailable = errStr.includes("503") ||
-                            errStr.includes("unavailable") ||
-                            errStr.includes("service unavailable") ||
-                            errStr.includes("demand") ||
-                            status === 503;
-                          
-      if ((isRateLimit || isUnavailable) && attempt < maxRetries) {
-        // Exponential backoff with random jitter
-        const backoffTime = delay * Math.pow(2, attempt - 1) * (0.8 + Math.random() * 0.4);
-        console.warn(`[Gemini API] Retryable error hit (${isRateLimit ? 'Rate Limit' : 'Unavailable'}). Retrying in ${Math.round(backoffTime)}ms...`);
-        await new Promise((resolve) => setTimeout(resolve, backoffTime));
-        continue;
-      }
-
-      // If we failed with gemini-3.5-flash and have a fallback available, try gemini-2.0-flash
-      if (currentModel === "gemini-3.5-flash") {
-        console.warn(`[Gemini API] Primary model ${currentModel} failed. Falling back to stable gemini-2.0-flash...`);
-        currentModel = "gemini-2.0-flash";
-        // Reset attempts and try with fallback model
-        return await ai.models.generateContent({
-          model: currentModel,
-          contents: contents as { role: string; parts: { text: string }[] }[],
-          config: config as Record<string, unknown>,
-        });
-      }
-
-      throw error;
-    }
-  }
-}
 
 async function startServer() {
   const app = express();
@@ -140,7 +69,7 @@ async function startServer() {
     }
   });
 
-  // Gemini Chat Proxy
+  // OpenRouter Chat Proxy
   app.post("/api/chat", async (req, res) => {
     try {
       // Simple IP rate limiter to protect the endpoint from rapid spamming
@@ -154,51 +83,66 @@ async function startServer() {
       }
       userLastRequestTimes.set(String(ip), now);
 
-      const rawKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.OPENROUTER_API_KEY || process.env.VITE_OPENROUTER_API_KEY;
+      const rawKey = process.env.OPENROUTER_API_KEY;
       // Thorough sanitization: remove all whitespace and surrounding quotes/backticks
       const apiKey = rawKey?.replace(/\s+/g, '').replace(/^[`'"]+|[`'"]+$/g, '');
       
       if (!apiKey || apiKey.length < 10) {
-        console.warn(`[Gemini Proxy] Key invalid or missing`);
-        return res.status(401).json({ 
-          error: "Gemini API key is invalid or missing. Please add a valid GEMINI_API_KEY in the Environment Settings (Vercel or AI Studio Settings)." 
+        console.warn(`[OpenRouter Proxy] Key invalid or missing`);
+        return res.status(500).json({ 
+          error: "Server Error: Unable to complete your request. Please check OPENROUTER_API_KEY." 
         });
       }
-
+      
       const { contents, systemInstruction } = req.body;
 
-      // Initialize the Gemini client as guided
-      const ai = new GoogleGenAI({
-        apiKey: apiKey,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build',
-          }
-        }
-      });
-
-      // Configure prompt and system instructions
-      const config: Record<string, unknown> = {
-        temperature: 0.7,
-      };
+      // Translate Gemini content format to OpenAI format
+      const messages: { role: string; content: string }[] = [];
       if (systemInstruction) {
-        config.systemInstruction = systemInstruction;
+        messages.push({ role: "system", content: systemInstruction });
       }
 
-      // Query Gemini API with the retry helper to gracefully handle limits / 429 errors
-      const response = await generateContentWithRetry(
-        ai,
-        "gemini-3.5-flash", // Native recommended Gemini 3.5 model
-        contents,
-        config
-      );
+      if (Array.isArray(contents)) {
+        for (const item of contents) {
+          const role = item.role === "user" ? "user" : "assistant";
+          const content = item.parts?.[0]?.text || "";
+          messages.push({ role, content });
+        }
+      }
 
-      const aiText = response?.text || "Sorry, I could not generate a response. Please try again.";
+      const model = process.env.OPENROUTER_MODEL || "google/gemini-2.5-flash";
+
+      const openRouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "HTTP-Referer": process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://myapp.vercel.app",
+          "X-OpenRouter-Title": "VU Routine App",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature: 0.7
+        })
+      });
+
+      if (!openRouterRes.ok) {
+        const errorData = await openRouterRes.text();
+        console.error("OpenRouter API Error:", openRouterRes.status, errorData);
+        if (openRouterRes.status === 401 || openRouterRes.status === 403) {
+          return res.status(401).json({ error: "Invalid or unauthorized OpenRouter API Key." });
+        }
+        return res.status(500).json({ error: "OpenRouter Error: Unable to complete your request. Please try again later." });
+      }
+
+      const data = await openRouterRes.json() as any;
+      const aiText = data?.choices?.[0]?.message?.content || "Sorry, I could not generate a response. Please try again.";
+      
       res.json({ text: aiText });
     } catch (error: unknown) {
-      console.error("Gemini API Proxy Error:", error);
-      const message = error instanceof Error ? error.message : "Failed to generate content";
-      res.status(500).json({ error: message });
+      console.error("OpenRouter API Proxy Error:", error);
+      res.status(500).json({ error: "Server Error: Unable to complete your request. Please try again later." });
     }
   });
 

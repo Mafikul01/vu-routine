@@ -17,11 +17,11 @@ import {
   ClassEntry,
   routineData as staticRoutineData,
 } from "@/data/routineData";
-import { GraduationCap, User, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, CodeXml, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote, FileText, Bus, Edit2, Save, Sparkles } from "lucide-react";
+import { GraduationCap, User, UserPlus, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, CodeXml, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote, FileText, Bus, Edit2, Save, Sparkles } from "lucide-react";
 import { useTheme } from "@/components/ThemeContext";
 import { toast } from "@/components/ui/sonner";
 import { motion, AnimatePresence } from "motion/react";
-import { getGoogleSheetCsvUrlByGid, parseRoutineCsv, parseTeacherCsv } from "@/lib/parser";
+import { getGoogleSheetCsvUrlByGid, parseRoutineCsv, parseTeacherCsv, normalizeBangladeshiPhone } from "@/lib/parser";
 import { Teacher } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { auth, db, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, handleFirestoreError, OperationType } from "@/lib/firebase";
@@ -107,6 +107,42 @@ const DEFAULT_BUS_SCHEDULE: BusTrip[] = [
 
 export default function Index() {
   const { theme, setTheme } = useTheme();
+  const downloadVCard = (teacherName: string, phoneNumber: string, designation?: string, email?: string) => {
+    const cleanName = cleanTeacherName(teacherName);
+    const formattedPhone = normalizeBangladeshiPhone(phoneNumber);
+    
+    const vCardLines = [
+      "BEGIN:VCARD",
+      "VERSION:3.0",
+      `FN:${cleanName}`,
+      `TEL;TYPE=CELL:${formattedPhone}`,
+    ];
+    
+    if (designation) {
+      vCardLines.push(`TITLE:${designation}`);
+      vCardLines.push(`ORG:CSE Department`);
+    }
+    if (email) {
+      vCardLines.push(`EMAIL;TYPE=PREF,INTERNET:${email}`);
+    }
+    
+    vCardLines.push("END:VCARD");
+    
+    const vCardContent = vCardLines.join("\r\n");
+    const blob = new Blob([vCardContent], { type: "text/vcard;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${cleanName.replace(/\s+/g, "_")}_Contact.vcf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast.success(`Contact card generated for ${cleanName}! Open the downloaded file to save directly.`);
+  };
+
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(() => Math.floor(Math.random() * QUOTES.length));
   const [role, setRole] = useState<Role>(() => {
     return (localStorage.getItem("routine-role") as Role) || null;
@@ -1282,7 +1318,7 @@ export default function Index() {
               onClick={() => setSelectedEntry(entry)}
               className="cursor-pointer transition-transform active:scale-[0.98]"
             >
-              <ClassCard entry={entry} showSection={role !== "student"} />
+              <ClassCard entry={entry} showSection={role !== "student"} teacherInfo={teacherInfo} />
             </div>
           ))
         ) : (
@@ -1571,14 +1607,25 @@ export default function Index() {
                         </div>
                       </div>
                       {info?.phone && (
-                        <a 
-                          href={`tel:${info.phone}`}
-                          className="flex items-center gap-2 rounded-lg bg-primary/5 p-2 text-sm text-primary transition-colors hover:bg-primary/10"
-                        >
-                          <Phone className="h-4 w-4" />
-                          <span>{info.phone}</span>
-                          <span className="ml-auto text-xs opacity-60">Call now</span>
-                        </a>
+                        <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                          <a 
+                            href={`tel:${normalizeBangladeshiPhone(info.phone)}`}
+                            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary/10 p-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+                          >
+                            <Phone className="h-3.5 w-3.5 shrink-0" />
+                            <span>Call ({normalizeBangladeshiPhone(info.phone)})</span>
+                          </a>
+                          <button 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              downloadVCard(info.name || name, info.phone, info.designation, info.email);
+                            }}
+                            className="flex items-center justify-center gap-2 rounded-lg bg-secondary p-2.5 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-secondary/80"
+                          >
+                            <UserPlus className="h-3.5 w-3.5 shrink-0" />
+                            <span>Save Contact</span>
+                          </button>
+                        </div>
                       )}
                     </div>
                   );
@@ -1629,14 +1676,25 @@ export default function Index() {
                     </div>
                   </div>
                   {teacher.phone && (
-                    <a 
-                      href={`tel:${teacher.phone}`}
-                      className="flex items-center gap-2 rounded-lg bg-primary/5 p-2 text-sm text-primary transition-colors hover:bg-primary/10"
-                    >
-                      <Phone className="h-4 w-4 shrink-0" />
-                      <span>{teacher.phone}</span>
-                      <span className="ml-auto text-xs opacity-60">Call</span>
-                    </a>
+                    <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                      <a 
+                        href={`tel:${normalizeBangladeshiPhone(teacher.phone)}`}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary/10 p-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+                      >
+                        <Phone className="h-3.5 w-3.5 shrink-0" />
+                        <span>Call ({normalizeBangladeshiPhone(teacher.phone)})</span>
+                      </a>
+                      <button 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          downloadVCard(teacher.name, teacher.phone, teacher.designation, teacher.email);
+                        }}
+                        className="flex items-center justify-center gap-2 rounded-lg bg-secondary p-2.5 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-secondary/80"
+                      >
+                        <UserPlus className="h-3.5 w-3.5 shrink-0" />
+                        <span>Save Contact</span>
+                      </button>
+                    </div>
                   )}
                 </div>
               ))}

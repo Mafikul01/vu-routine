@@ -71,6 +71,31 @@ export function parseRoutineCsv(csvData: string, fallbackSemester: number = 1): 
   return results;
 }
 
+export function normalizeBangladeshiPhone(phone: string): string {
+  if (!phone) return "";
+  // Strip spaces, dashes, parentheses
+  const cleaned = phone.trim().replace(/[\s\-()]/g, "");
+  
+  if (cleaned.startsWith("+880")) {
+    const main = cleaned.slice(4);
+    if (main.startsWith("1") && main.length === 10) {
+      return cleaned;
+    }
+  } else if (cleaned.startsWith("880")) {
+    const main = cleaned.slice(3);
+    if (main.startsWith("1") && main.length === 10) {
+      return "+880" + main;
+    }
+  } else if (cleaned.startsWith("1") && cleaned.length === 10) {
+    return "0" + cleaned;
+  } else if (cleaned.startsWith("01") && cleaned.length === 11) {
+    return cleaned;
+  } else if (/^[1-9]\d{9}$/.test(cleaned) && cleaned.startsWith("1")) {
+    return "0" + cleaned;
+  }
+  return cleaned;
+}
+
 export function parseTeacherCsv(csvData: string): Teacher[] {
   const parsed = Papa.parse(csvData, { skipEmptyLines: true }).data as string[][];
   const teachers: Teacher[] = [];
@@ -95,7 +120,7 @@ export function parseTeacherCsv(csvData: string): Teacher[] {
       const name = row[2].trim().replace(/\s*\(cse\)/i, "").trim();
       const designation = row[3]?.trim() || "";
       const email = row[4]?.trim() || "";
-      const phone = row[5]?.trim() || "";
+      const phone = normalizeBangladeshiPhone(row[5]?.trim() || "");
       
       teachers.push({
         initials: getInitials(name),
@@ -112,7 +137,7 @@ export function parseTeacherCsv(csvData: string): Teacher[] {
     if (row[11] && row[11].trim() && row[11] !== "Teacher's Initial" && row[12] && row[12].trim()) {
       const initials = row[11].trim();
       const name = row[12].trim().replace(/\s*\(cse\)/i, "").trim();
-      const phone = row[13]?.trim() || "";
+      const phone = normalizeBangladeshiPhone(row[13]?.trim() || "");
       
       teachers.push({
         initials,
