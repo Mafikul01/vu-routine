@@ -339,13 +339,8 @@ Instructions:
         })
       });
 
-      if (response.status === 401) {
-        throw new Error("Gemini API key is missing. Please go to Settings -> Secrets in AI Studio and add GEMINI_API_KEY, or set GEMINI_API_KEY in your deployment environment variables.");
-      }
-
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Server error: ${response.status}`);
+        throw new Error("Server Error: Unable to complete your request. Please try again later.");
       }
 
       const data = await response.json();

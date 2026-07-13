@@ -6,7 +6,7 @@ export function getGoogleSheetCsvUrlByGid(baseUrl: string, gid: string): string 
   const sheetIdMatch = baseUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
   if (!sheetIdMatch) return baseUrl;
   const sheetId = sheetIdMatch[1];
-  return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+  return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}&t=${Date.now()}`;
 }
 
 export function parseRoutineCsv(csvData: string, fallbackSemester: number = 1): ClassEntry[] {

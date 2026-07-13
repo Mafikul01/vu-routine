@@ -241,7 +241,7 @@ export default function Index() {
       const fetchTeacherInfo = async () => {
         try {
           const infoUrl = getGoogleSheetCsvUrlByGid(adminSettings.mainSheetUrl, adminSettings.infoGid);
-          const infoResponse = await fetch(infoUrl);
+          const infoResponse = await fetch(infoUrl, { cache: "no-store" });
           if (infoResponse.ok) {
             const infoCsv = await infoResponse.text();
             let teachers = parseTeacherCsv(infoCsv);
@@ -308,7 +308,7 @@ export default function Index() {
       const sessionPromises = gidsArray.map(async ([sem, gid]) => {
         try {
           const csvUrl = getGoogleSheetCsvUrlByGid(adminSettings.mainSheetUrl, gid);
-          const response = await fetch(csvUrl);
+          const response = await fetch(csvUrl, { cache: "no-store" });
           if (!response.ok) {
             console.warn(`Routine fetch failed for Sem ${sem}: ${response.status}`);
             return [];
