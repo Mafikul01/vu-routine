@@ -604,17 +604,17 @@ export default function Index() {
 
   useEffect(() => {
     if (role && !isChangingRole) {
+      if (role === "student" && !hasSetupPreferences) {
+        return; // wait for student to complete setup
+      }
       const tourCompleted = localStorage.getItem("routine-tour-completed") === "true";
       if (!tourCompleted) {
-        const timer = setTimeout(() => {
-          setIsTourOpen(true);
-        }, 600);
-        return () => clearTimeout(timer);
+        setIsTourOpen(true);
       }
     } else {
       setIsTourOpen(false);
     }
-  }, [role, isChangingRole]);
+  }, [role, isChangingRole, hasSetupPreferences]);
 
   const handleLogin = async () => {
     try {

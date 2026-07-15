@@ -47,58 +47,55 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
   useEffect(() => {
     if (!window.visualViewport) return;
     
+    let timeoutId: NodeJS.Timeout | null = null;
+    let prevHeight = window.visualViewport.height;
+
     const handleResize = () => {
-      if (window.visualViewport) {
-        setVvHeight(`${window.visualViewport.height}px`);
-        setVvOffsetTop(window.visualViewport.offsetTop);
-        setKbHeight(window.innerHeight - window.visualViewport.height);
-        scrollToBottom();
-      }
+      if (!window.visualViewport) return;
+
+      const currentHeight = window.visualViewport.height;
+      const heightDiff = Math.abs(prevHeight - currentHeight);
+
+      // Ignore tiny viewport changes (< 5px) to prevent jitter
+      if (heightDiff > 0 && heightDiff < 5) return;
+
+      if (timeoutId) clearTimeout(timeoutId);
+
+      // Debounce resize updates (around 100ms)
+      timeoutId = setTimeout(() => {
+        requestAnimationFrame(() => {
+          if (!window.visualViewport) return;
+          setVvHeight(`${window.visualViewport.height}px`);
+          setVvOffsetTop(window.visualViewport.offsetTop);
+          setKbHeight(window.innerHeight - window.visualViewport.height);
+          prevHeight = window.visualViewport.height;
+          
+          // Use 'auto' instead of 'smooth' to snap to bottom instantly during keyboard layout change
+          if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+          }
+        });
+      }, 100);
     };
 
     window.visualViewport.addEventListener('resize', handleResize);
     window.visualViewport.addEventListener('scroll', handleResize);
+    
     // Initial calculation
-    handleResize();
-
-    // Set up rapid polling when the input is focused/blurred to ensure smooth, immediate update
-    let pollInterval: NodeJS.Timeout | null = null;
-    const startPolling = () => {
-      if (pollInterval) clearInterval(pollInterval);
-      pollInterval = setInterval(handleResize, 33); // ~30 fps updates for fluid tracking
-      setTimeout(() => {
-        if (pollInterval) {
-          clearInterval(pollInterval);
-          pollInterval = null;
-        }
-      }, 1500); // Poll for 1.5s during keyboard layout animation
-    };
-
-    const handleFocusIn = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
-      if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
-        startPolling();
+    requestAnimationFrame(() => {
+      if (window.visualViewport) {
+        setVvHeight(`${window.visualViewport.height}px`);
+        setVvOffsetTop(window.visualViewport.offsetTop);
+        setKbHeight(window.innerHeight - window.visualViewport.height);
       }
-    };
-
-    const handleFocusOut = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
-      if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
-        startPolling();
-      }
-    };
-
-    document.addEventListener('focusin', handleFocusIn);
-    document.addEventListener('focusout', handleFocusOut);
+    });
 
     return () => {
       if (window.visualViewport) {
         window.visualViewport.removeEventListener('resize', handleResize);
         window.visualViewport.removeEventListener('scroll', handleResize);
       }
-      document.removeEventListener('focusin', handleFocusIn);
-      document.removeEventListener('focusout', handleFocusOut);
-      if (pollInterval) clearInterval(pollInterval);
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, []);
 
