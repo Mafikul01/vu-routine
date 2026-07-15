@@ -154,7 +154,7 @@ export function parseTeacherCsv(csvData: string): Teacher[] {
   // De-duplicate by normalized name
   const uniqueTeachers: Record<string, Teacher> = {};
   for (const t of teachers) {
-    const key = t.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const key = (t.name || '').toLowerCase().replace(/[^a-z0-9]/g, "");
     if (!uniqueTeachers[key]) {
       uniqueTeachers[key] = t;
     } else {

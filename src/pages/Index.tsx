@@ -1648,9 +1648,9 @@ export default function Index() {
           <div className="flex-1 overflow-y-auto py-2 space-y-3 pr-1">
             {teacherInfo
               .filter(t => 
-                t.name.toLowerCase().includes(dirSearchTerm.toLowerCase()) || 
-                (t.initials && t.initials.toLowerCase().includes(dirSearchTerm.toLowerCase())) ||
-                (t.designation && t.designation.toLowerCase().includes(dirSearchTerm.toLowerCase()))
+                (t.name || '').toLowerCase().includes(dirSearchTerm.toLowerCase()) || 
+                (t.initials && (t.initials || '').toLowerCase().includes(dirSearchTerm.toLowerCase())) ||
+                (t.designation && (t.designation || '').toLowerCase().includes(dirSearchTerm.toLowerCase()))
               )
               .map((teacher, idx) => (
                 <div key={idx} className="rounded-xl border p-4 space-y-3">
@@ -1680,9 +1680,9 @@ export default function Index() {
               </div>
             )}
             {teacherInfo.length > 0 && dirSearchTerm && !teacherInfo.some(t => 
-                t.name.toLowerCase().includes(dirSearchTerm.toLowerCase()) || 
-                (t.initials && t.initials.toLowerCase().includes(dirSearchTerm.toLowerCase())) ||
-                (t.designation && t.designation.toLowerCase().includes(dirSearchTerm.toLowerCase()))
+                (t.name || '').toLowerCase().includes(dirSearchTerm.toLowerCase()) || 
+                (t.initials && (t.initials || '').toLowerCase().includes(dirSearchTerm.toLowerCase())) ||
+                (t.designation && (t.designation || '').toLowerCase().includes(dirSearchTerm.toLowerCase()))
               ) && (
               <div className="py-8 text-center text-sm text-muted-foreground">
                 No teachers found matching "{dirSearchTerm}"

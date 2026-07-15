@@ -289,15 +289,21 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
 
       // 3. Filter data locally to save tokens
       const userMsgLower = userMsg.content.toLowerCase();
-      const filteredRoutine = optimizedRoutine.filter(entry => 
-        userMsgLower.includes(entry.course.toLowerCase()) ||
-        entry.teachers.some(t => userMsgLower.includes(t.toLowerCase())) ||
-        (userMsgLower.includes('free') && entry.room.toLowerCase().includes(userMsgLower.split(' ').pop() || ''))
-      );
+      const filteredRoutine = optimizedRoutine.filter((entry: any) => {
+        const course = (entry.c ?? '').toLowerCase();
+        const room = (entry.r ?? '').toLowerCase();
+        const teachers = (entry.t ?? '').toLowerCase().split(',').map((t: string) => t.trim()).filter(Boolean);
+        
+        return (course && userMsgLower.includes(course)) ||
+               teachers.some((t: string) => userMsgLower.includes(t)) ||
+               (userMsgLower.includes('free') && room && room.includes(userMsgLower.split(' ').pop() || ''));
+      });
       
-      const filteredTeachers = optimizedTeachers.filter(t => 
-        userMsgLower.includes(t.toLowerCase())
-      );
+      const filteredTeachers = optimizedTeachers.filter((t: any) => {
+        const name = (t.n ?? '').toLowerCase();
+        const initials = (t.i ?? '').toLowerCase();
+        return (name && userMsgLower.includes(name)) || (initials && userMsgLower.includes(initials));
+      });
       
       const historyToKeep = [userMsg];
       // --- OPTIMIZATION END ---
