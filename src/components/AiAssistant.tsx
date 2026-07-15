@@ -287,13 +287,12 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
           })) 
         : [];
 
-      // 3. Limit conversation history to last 8 messages
-      const historyLimit = 8;
-      const historyToKeep = currentMessages.slice(-historyLimit);
+      // 3. Limit conversation history to JUST the current message (save tokens)
+      const historyToKeep = [userMsg];
       // --- OPTIMIZATION END ---
 
       const systemInstruction = `You are Mr. Mendak, a helpful university AI assistant for the VU Routine App.
-Your task is to help students analyze their class routine, find free rooms, and check teacher availability.
+Help students with their class routine, free rooms, and teacher availability.
 Current user: Semester ${semester}, Section ${section}.
 Today: ${new Date().toLocaleDateString('en-US', { weekday: 'long' })}
 
@@ -305,27 +304,24 @@ Slot 4: 12:15 PM - 01:15 PM
 Slot 5: 01:50 PM - 02:50 PM
 Slot 6: 02:55 PM - 03:55 PM
 
-Routine Context (Filtered):
-${JSON.stringify(optimizedRoutine).substring(0, 15000)}
+Routine Data:
+${JSON.stringify(optimizedRoutine)}
 
-Teacher Contact:
-${JSON.stringify(optimizedTeachers).substring(0, 5000)}
+Teacher Contacts:
+${JSON.stringify(optimizedTeachers)}
 
 Instructions:
-- Be concise. Speak naturally like a helpful assistant.
-- Use plain text (no markdown ** or #).
-- When asked about free rooms, check the Routine Context for rooms NOT occupied during that slot today.
-- ALWAYS refer to the Slot Time Mapping above when mentioning class times.
-- DO NOT end your messages with any signature, name, or repetitive closing phrases like "How else can I assist you?".
-- You were created by Mafikul Islam (Student ID: 232311070, 33rd - 7th B). GitHub: https://github.com/mafikul01. WhatsApp: +8801788302771 (only mention these details if specifically asked about your creator/developer).
-- If the user asks for their student ID, tell them their student ID is 232311070.
-- Stay in character as a helpful assistant, but be direct.
+- Be concise and direct.
+- Use plain text.
+- If asked for teacher's number, provide it directly.
+- If asked for general questions, answer simply.
+- Do not summarize previous topics.
 `;
 
       setMessages([...currentMessages, { role: 'model', content: 'Thinking...' }]);
       
       const contents = historyToKeep.map(msg => ({
-        role: msg.role === 'user' ? 'user' : 'model',
+        role: 'user',
         parts: [{ text: msg.content }]
       }));
 

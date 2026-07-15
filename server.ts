@@ -3,6 +3,7 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import fetch from "node-fetch";
+import { GoogleGenAI } from "@google/genai";
 
 const _filename = typeof __filename !== 'undefined' ? __filename : fileURLToPath(import.meta.url);
 const _dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(_filename);
@@ -67,7 +68,7 @@ async function startServer() {
     }
   });
 
-  // OpenRouter Chat Proxy
+  // Gemini Chat Proxy
   app.post("/api/chat", async (req, res) => {
     try {
       // Simple IP rate limiter to protect the endpoint from rapid spamming
@@ -81,55 +82,29 @@ async function startServer() {
       }
       userLastRequestTimes.set(String(ip), now);
 
-      const apiKey = process.env.OPENROUTER_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
-        console.warn(`[OpenRouter Proxy] Key invalid or missing`);
+        console.warn(`[Gemini Proxy] Key invalid or missing`);
         return res.status(500).json({ 
-          error: "Server Error: Unable to complete your request. Please check OPENROUTER_API_KEY." 
+          error: "Server Error: Unable to complete your request. Please check GEMINI_API_KEY." 
         });
       }
       
-      const { contents, systemInstruction } = req.body;
+      const ai = new GoogleGenAI({ apiKey });
+      const { contents, systemInstruction, model } = req.body;
       
-      // Translate messages to OpenRouter format
-      const messages: { role: string; content: string }[] = [];
-      if (systemInstruction) {
-        messages.push({ role: "system", content: systemInstruction });
-      }
-
-      if (Array.isArray(contents)) {
-        for (const item of contents) {
-          const role = item.role === "user" ? "user" : "assistant";
-          const content = item.parts?.[0]?.text || "";
-          messages.push({ role, content });
-        }
-      }
-
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "HTTP-Referer": "https://ais-dev-ivntq76xy3f5iml7tbb4az-219476684083.asia-east1.run.app",
-          "X-OpenRouter-Title": "Mr. Mendak AI",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages,
+      const response = await ai.models.generateContent({
+        model: model || 'gemini-2.5-flash',
+        contents: contents,
+        config: {
+          systemInstruction: systemInstruction,
           temperature: 0.7
-        })
+        }
       });
-
-      const data = await response.json() as any;
       
-      if (!response.ok) {
-        console.error("OpenRouter API Error:", data);
-        throw new Error(data.error?.message || "Failed to get response from AI");
-      }
-      
-      res.json({ text: data.choices[0].message.content });
+      res.json({ text: response.text });
     } catch (error: any) {
-      console.error("OpenRouter API Proxy Error:", error);
+      console.error("Gemini API Proxy Error:", error);
       res.status(500).json({ error: error?.message || "Server Error: Unable to complete your request. Please try again later." });
     }
   });
