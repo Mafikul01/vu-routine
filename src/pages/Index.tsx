@@ -193,6 +193,7 @@ export default function Index() {
   });
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
+  const [isInitialSyncDone, setIsInitialSyncDone] = useState(false);
   
   // Room Finder states
   const [isRoomFinderOpen, setIsRoomFinderOpen] = useState(false);
@@ -219,7 +220,19 @@ export default function Index() {
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
   const [isBusScheduleOpen, setIsBusScheduleOpen] = useState(false);
   const [isEditingBusSchedule, setIsEditingBusSchedule] = useState(false);
-  const [isTourOpen, setIsTourOpen] = useState(false);
+  const [hasCompletedTour, setHasCompletedTour] = useState(() => localStorage.getItem("routine-tour-completed") === "true");
+
+  // Onboarding State Machine
+  // Flow: ROLE_SELECTION -> PREFERENCES_SELECTION -> ROUTINE_LOADING -> GUIDED_TOUR -> COMPLETED
+  // This ensures deterministic state transitions without race conditions.
+  const onboardingState = useMemo(() => {
+    if (!role || isChangingRole) return "ROLE_SELECTION";
+    if (role === "student" && !hasSetupPreferences) return "PREFERENCES_SELECTION";
+    if (!isInitialSyncDone) return "ROUTINE_LOADING";
+    if (!hasCompletedTour) return "GUIDED_TOUR";
+    return "COMPLETED";
+  }, [role, isChangingRole, hasSetupPreferences, isInitialSyncDone, hasCompletedTour]);
+
   const [localToast, setLocalToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [toastSwipeOffset, setToastSwipeOffset] = useState({ x: 0, y: 0 });
   const [dirSearchTerm, setDirSearchTerm] = useState("");
@@ -395,6 +408,7 @@ export default function Index() {
     } finally {
       setIsSyncing(false);
       setIsPullRefreshing(false);
+      setIsInitialSyncDone(true);
     }
   }, [adminSettings.infoGid, adminSettings.mainSheetUrl, adminSettings.semesterGids, semester]);
 
@@ -602,19 +616,7 @@ export default function Index() {
     }
   }, [user, adminSettings.adminEmails]);
 
-  useEffect(() => {
-    if (role && !isChangingRole) {
-      if (role === "student" && !hasSetupPreferences) {
-        return; // wait for student to complete setup
-      }
-      const tourCompleted = localStorage.getItem("routine-tour-completed") === "true";
-      if (!tourCompleted) {
-        setIsTourOpen(true);
-      }
-    } else {
-      setIsTourOpen(false);
-    }
-  }, [role, isChangingRole, hasSetupPreferences]);
+
 
   const handleLogin = async () => {
     try {
@@ -874,7 +876,7 @@ export default function Index() {
       })
     : teachers;
 
-  if (isChangingRole || !role) {
+  if (onboardingState === "ROLE_SELECTION") {
     // Current role will be in 2nd position, other role in 1st.
     const isStudent = role === "student";
     
@@ -1112,7 +1114,8 @@ export default function Index() {
               <button
                 onClick={() => {
                   setIsMenuOpen(false);
-                  setIsTourOpen(true);
+                  localStorage.removeItem("routine-tour-completed");
+                  setHasCompletedTour(false);
                 }}
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
               >
@@ -2251,7 +2254,7 @@ export default function Index() {
     </div>
 
     {/* First-Time Student Setup Dialog */}
-    <Dialog open={role === "student" && !hasSetupPreferences && !isTourOpen} onOpenChange={() => {}}>
+    <Dialog open={onboardingState === "PREFERENCES_SELECTION"} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-md p-6 pointer-events-auto [&>button]:hidden" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -2325,9 +2328,12 @@ export default function Index() {
     {/* Floating AI Assistant Widget */}
     <AiAssistant routineData={currentRoutine} semester={semester} section={section} teacherInfo={teacherInfo} />
     
-    {isTourOpen && (
+    {onboardingState === "GUIDED_TOUR" && (
       <GuidedTour 
-        onComplete={() => setIsTourOpen(false)} 
+        onComplete={() => {
+          localStorage.setItem("routine-tour-completed", "true");
+          setHasCompletedTour(true);
+        }} 
         onOpenMenu={(open) => setIsMenuOpen(open)}
         isMenuOpen={isMenuOpen}
       />
