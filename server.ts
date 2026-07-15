@@ -11,6 +11,23 @@ const _dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(_fi
 // Simple rate-limiting map to prevent users from spamming requests too fast
 const userLastRequestTimes = new Map<string, number>();
 
+// Simple response cache
+const responseCache = new Map<string, { text: string, timestamp: number }>();
+const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
+
+async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+  try {
+    return await fn();
+  } catch (error: any) {
+    if (retries > 0 && (error.status === 429 || error.status === 503 || error.status === 500)) {
+      console.warn(`Retryable error, retrying in ${delay}ms...`, error.message);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return withRetry(fn, retries - 1, delay * 2);
+    }
+    throw error;
+  }
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -93,19 +110,40 @@ async function startServer() {
       const ai = new GoogleGenAI({ apiKey });
       const { contents, systemInstruction, model } = req.body;
       
-      const response = await ai.models.generateContent({
+      // Cache key
+      const cacheKey = JSON.stringify(contents) + JSON.stringify(systemInstruction);
+      if (responseCache.has(cacheKey)) {
+        const cached = responseCache.get(cacheKey)!;
+        if (Date.now() - cached.timestamp < CACHE_TTL) {
+          return res.json({ text: cached.text });
+        }
+      }
+      
+      const response = await withRetry(() => ai.models.generateContent({
         model: model || 'gemini-2.5-flash',
         contents: contents,
         config: {
           systemInstruction: systemInstruction,
           temperature: 0.7
         }
-      });
+      }));
       
+      responseCache.set(cacheKey, { text: response.text, timestamp: Date.now() });
       res.json({ text: response.text });
     } catch (error: any) {
       console.error("Gemini API Proxy Error:", error);
-      res.status(500).json({ error: error?.message || "Server Error: Unable to complete your request. Please try again later." });
+      let status = 500;
+      let message = "Server Error: Unable to complete your request. Please try again later.";
+      
+      if (error.status === 429) {
+        status = 429;
+        message = "Rate limit exceeded. Please wait a moment.";
+      } else if (error.status === 401 || error.status === 403) {
+        status = 500; // Keep internal
+        message = "Configuration error. Please contact support.";
+      }
+      
+      res.status(status).json({ error: message });
     }
   });
 

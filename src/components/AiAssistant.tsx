@@ -287,28 +287,29 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
           })) 
         : [];
 
-      // 3. Limit conversation history to JUST the current message (save tokens)
+      // 3. Filter data locally to save tokens
+      const userMsgLower = userMsg.content.toLowerCase();
+      const filteredRoutine = optimizedRoutine.filter(entry => 
+        userMsgLower.includes(entry.course.toLowerCase()) ||
+        entry.teachers.some(t => userMsgLower.includes(t.toLowerCase())) ||
+        (userMsgLower.includes('free') && entry.room.toLowerCase().includes(userMsgLower.split(' ').pop() || ''))
+      );
+      
+      const filteredTeachers = optimizedTeachers.filter(t => 
+        userMsgLower.includes(t.toLowerCase())
+      );
+      
       const historyToKeep = [userMsg];
       // --- OPTIMIZATION END ---
-
-      const systemInstruction = `You are Mr. Mendak, a helpful university AI assistant for the VU Routine App.
+      
+      const systemInstruction = `You are Mr. Mendak, a helpful university AI assistant.
 Help students with their class routine, free rooms, and teacher availability.
-Current user: Semester ${semester}, Section ${section}.
-Today: ${new Date().toLocaleDateString('en-US', { weekday: 'long' })}
 
-STRICT SLOT TIME MAPPING:
-Slot 1: 09:00 AM - 10:00 AM
-Slot 2: 10:05 AM - 11:05 AM
-Slot 3: 11:10 AM - 12:10 PM
-Slot 4: 12:15 PM - 01:15 PM
-Slot 5: 01:50 PM - 02:50 PM
-Slot 6: 02:55 PM - 03:55 PM
+Routine Data (Relevant only):
+${JSON.stringify(filteredRoutine)}
 
-Routine Data:
-${JSON.stringify(optimizedRoutine)}
-
-Teacher Contacts:
-${JSON.stringify(optimizedTeachers)}
+Teacher Contacts (Relevant only):
+${JSON.stringify(filteredTeachers)}
 
 Instructions:
 - Be concise and direct.
