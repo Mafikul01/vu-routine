@@ -287,8 +287,82 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
           })) 
         : [];
 
-      // 3. Filter data locally to save tokens
+      // 3. Local Search / Direct Answer Routing (Save Tokens)
       const userMsgLower = userMsg.content.toLowerCase();
+      let localResponse: string | null = null;
+
+      // Local Route 1: Teacher phone number query
+      if (userMsgLower.includes("number") || userMsgLower.includes("phone") || userMsgLower.includes("contact")) {
+         const matches = optimizedTeachers.filter((t: any) => {
+            const n = (t.n ?? '').toLowerCase();
+            const i = (t.i ?? '').toLowerCase();
+            const safeI = i.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+            return (n && n.length > 2 && userMsgLower.includes(n)) || (i && i.length > 1 && userMsgLower.match(new RegExp(`\\b${safeI}\\b`)));
+         });
+         
+         if (matches.length > 0) {
+            localResponse = "Here is the contact info:\n" + matches.map((t: any) => `• ${t.n || 'Unknown'} (${t.i || ''}): ${t.p || 'Number not available'}`).join('\n');
+         }
+      }
+
+      // Local Route 2: My Class query (Today / Tomorrow)
+      const asksAboutTeacher = optimizedTeachers.some((t: any) => {
+         const n = (t.n ?? '').toLowerCase();
+         const i = (t.i ?? '').toLowerCase();
+         const safeI = i.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+         return (n && n.length > 2 && userMsgLower.includes(n)) || (i && i.length > 1 && userMsgLower.match(new RegExp(`\\b${safeI}\\b`)));
+      });
+
+      if (!localResponse && !asksAboutTeacher && userMsgLower.includes("class") && (userMsgLower.includes("today") || userMsgLower.includes("tomorrow") || userMsgLower.includes("my"))) {
+         const isTomorrow = userMsgLower.includes("tomorrow");
+         const targetDate = new Date();
+         if (isTomorrow) targetDate.setDate(targetDate.getDate() + 1);
+         const targetDayShort = targetDate.toLocaleDateString('en-US', { weekday: 'long' }).substring(0, 3);
+         
+         // Use the raw routineData to ensure we have all days, not just optimizedRoutine which might be filtered to today only
+         const myClasses = routineData.filter((e: any) => e.day.substring(0,3) === targetDayShort && e.semester === semester && e.section.includes(section));
+         
+         const dayName = isTomorrow ? "Tomorrow" : "Today";
+         if (myClasses.length > 0) {
+            localResponse = `Your classes ${dayName}:\n` + myClasses.sort((a: any, b: any) => a.slot - b.slot).map((e: any) => `• Slot ${e.slot}: ${e.course} in Room ${e.room} with ${e.teachers.join(', ')}`).join('\n');
+         } else {
+            localResponse = `You have no classes ${dayName.toLowerCase()}.`;
+         }
+      }
+
+      // Local Route 3: Free room query
+      if (!localResponse && (userMsgLower.includes("free") || userMsgLower.includes("empty")) && userMsgLower.includes("room")) {
+         const slotMatch = userMsgLower.match(/slot\s*(\d)/) || userMsgLower.match(/(\d)(?:st|nd|rd|th)\s*slot/);
+         if (slotMatch) {
+             const slotNum = parseInt(slotMatch[1], 10);
+             const targetDayShort = new Date().toLocaleDateString('en-US', { weekday: 'long' }).substring(0, 3);
+             
+             // Get all unique rooms
+             const allRooms = Array.from(new Set((routineData as any[]).map(e => e.room))).filter(Boolean) as string[];
+             
+             // Get occupied rooms for this slot today
+             const occupiedRooms = new Set((routineData as any[]).filter(e => e.day.substring(0,3) === targetDayShort && e.slot === slotNum).map(e => e.room));
+             
+             const freeRooms = allRooms.filter(r => !occupiedRooms.has(r)).sort();
+             if (freeRooms.length > 0) {
+                 localResponse = `Free rooms today (Slot ${slotNum}):\n${freeRooms.join(', ')}`;
+             } else {
+                 localResponse = `There are no free rooms available in Slot ${slotNum} today.`;
+             }
+         } else {
+             localResponse = "Please specify which slot you are looking for (e.g., 'free room in slot 3').";
+         }
+      }
+
+      if (localResponse) {
+          setTimeout(() => {
+             setMessages(prev => [...prev, { role: 'model', content: localResponse as string }]);
+             setIsLoading(false);
+          }, 300);
+          return;
+      }
+
+      // 4. If no local response, prepare data for Gemini
       const filteredRoutine = optimizedRoutine.filter((entry: any) => {
         const course = (entry.c ?? '').toLowerCase();
         const room = (entry.r ?? '').toLowerCase();
