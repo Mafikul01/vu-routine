@@ -137,7 +137,7 @@ export const COURSE_NAMES: Record<string, string> = {
     "CSE 4103": "Digital Image Processing",
     "CSE 4104": "Digital Image Processing Lab",
     "CSE 4105": "Engineering Ethics and Environmental Protection",
-    "CSE 4107": "Software Engineering and System Analysis",
+    "CSE 4107": "Microcontroller, Computer Peripherals and Interfacing",
     "CSE 4109": "Computer Vision and Pattern Recognition",
     "CSE 4110": "Computer Vision and Pattern Recognition Lab",
     "CSE 4111": "Mobile Apps and Game Development",
