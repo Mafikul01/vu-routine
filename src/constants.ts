@@ -162,7 +162,7 @@ export const COURSE_NAMES: Record<string, string> = {
     "CSE 4213": "UI/UX Engineering",
     "CSE 4214": "UI/UX Engineering Lab",
 
-    "CSE 4108": "Microcontroller, Computer Peripheral and Interfacing Lab",
+    "CSE 4108": "Microcontroller, Computer Peripherals and Interfacing Lab",
     "ACC 4171":"Industrial Management and Accountancy",
     "ECO 3271":"Engineering Economics"
 };
