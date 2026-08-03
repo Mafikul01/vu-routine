@@ -56,9 +56,19 @@ export function parseRoutineCsv(csvData: string, fallbackSemester: number = 1): 
           else room = lines[2].trim();
         }
 
+        let entrySlot = slots[c] || c;
+
+        // Apply updated Summer-2026 correction for 7th B Wednesday CSE 4108
+        if (sem === 7 && sec === "B" && course === "CSE 4108" && currentDay === "Wednesday") {
+          entrySlot = 2;
+          teachers.length = 0;
+          teachers.push("S.M. Mahadi Hasan", "Asim Moin Saad");
+          room = "131 MIL";
+        }
+
         results.push({
           day: currentDay,
-          slot: slots[c] || c,
+          slot: entrySlot,
           teachers,
           course,
           semester: sem,

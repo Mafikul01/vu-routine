@@ -35,7 +35,141 @@ export const SEMESTER_SECTIONS: Record<number, string[]> = {
   8: ["A", "B", "C", "D", "E", "F"],
 };
 
-export const routineData: ClassEntry[] = [];
+export const routineData: ClassEntry[] = [
+  // Sunday
+  {
+    day: "Sunday",
+    slot: 1,
+    teachers: ["Tahrima Sayem Sowa", "Syeda Tamanna Alam Monisha"],
+    course: "CSE 4122",
+    semester: 7,
+    section: "B",
+    room: "128 BCL"
+  },
+  {
+    day: "Sunday",
+    slot: 2,
+    teachers: ["Md. Taufiq Khan"],
+    course: "CSE 4103",
+    semester: 7,
+    section: "B",
+    room: "511"
+  },
+  {
+    day: "Sunday",
+    slot: 4,
+    teachers: ["Md. Mahfujur Rahman"],
+    course: "CSE 4101",
+    semester: 7,
+    section: "B",
+    room: "313"
+  },
+  {
+    day: "Sunday",
+    slot: 5,
+    teachers: ["Asim Moin Saad"],
+    course: "CSE 4107",
+    semester: 7,
+    section: "B",
+    room: "413"
+  },
+
+  // Monday
+  {
+    day: "Monday",
+    slot: 2,
+    teachers: ["Md. Mahfujur Rahman", "D. M. Asadujjaman"],
+    course: "CSE 4102",
+    semester: 7,
+    section: "B",
+    room: "128 BCL"
+  },
+  {
+    day: "Monday",
+    slot: 4,
+    teachers: ["BA New Teacher 1"],
+    course: "ACC 4171",
+    semester: 7,
+    section: "B",
+    room: "1008"
+  },
+  {
+    day: "Monday",
+    slot: 5,
+    teachers: ["Md. Mahfujur Rahman"],
+    course: "CSE 4101",
+    semester: 7,
+    section: "B",
+    room: "311"
+  },
+
+  // Tuesday
+  {
+    day: "Tuesday",
+    slot: 1,
+    teachers: ["Syeda Tamanna Alam Monisha"],
+    course: "CSE 4105",
+    semester: 7,
+    section: "B",
+    room: "508"
+  },
+  {
+    day: "Tuesday",
+    slot: 2,
+    teachers: ["Asim Moin Saad"],
+    course: "CSE 4107",
+    semester: 7,
+    section: "B",
+    room: "508"
+  },
+  {
+    day: "Tuesday",
+    slot: 3,
+    teachers: ["BA New Teacher 1"],
+    course: "ACC 4171",
+    semester: 7,
+    section: "B",
+    room: "1011"
+  },
+  {
+    day: "Tuesday",
+    slot: 4,
+    teachers: ["Md. Taufiq Khan", "Humayra Tasnim"],
+    course: "CSE 4104",
+    semester: 7,
+    section: "B",
+    room: "128 BCL"
+  },
+
+  // Wednesday
+  {
+    day: "Wednesday",
+    slot: 1,
+    teachers: ["Md. Taufiq Khan"],
+    course: "CSE 4103",
+    semester: 7,
+    section: "B",
+    room: "311"
+  },
+  {
+    day: "Wednesday",
+    slot: 2,
+    teachers: ["S.M. Mahadi Hasan", "Asim Moin Saad"],
+    course: "CSE 4108",
+    semester: 7,
+    section: "B",
+    room: "131 MIL"
+  },
+  {
+    day: "Wednesday",
+    slot: 4,
+    teachers: ["Syeda Tamanna Alam Monisha"],
+    course: "CSE 4105",
+    semester: 7,
+    section: "B",
+    room: "1008"
+  }
+];
 
 export function getTeacherList(data: ClassEntry[] = routineData): string[] {
   const teachers = new Set<string>();
