@@ -27,8 +27,6 @@ export const PWAInstallDialog: React.FC<PWAInstallDialogProps> = ({
   onInstall,
 }) => {
   const handleDismiss = () => {
-    // Dismiss for 7 days
-    localStorage.setItem("pwa-install-dismissed-time", String(Date.now()));
     onOpenChange(false);
   };
 

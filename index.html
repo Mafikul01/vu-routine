@@ -49,6 +49,12 @@
           }
         } catch (e) {}
       })();
+
+      // Global early capture for 1-click PWA Installation
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.deferredPWAInstallPrompt = e;
+      });
     </script>
     
     <link rel="icon" type="image/png" href="https://i.imgur.com/X13BpyI.png" />

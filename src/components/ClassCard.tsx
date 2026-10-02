@@ -1,6 +1,7 @@
 import { ClassEntry, SLOTS, cleanTeacherName, normalizeTeacherName } from "@/data/routineData";
 import { COURSE_NAMES } from "@/constants";
 import { Teacher } from "@/types";
+import { ChevronRight } from "lucide-react";
 
 const slotColors: Record<number, string> = {
   1: "border-l-slot-1 bg-slot-1/5",
@@ -41,15 +42,43 @@ export function ClassCard({ entry, showSection = false, teacherInfo = [] }: Clas
     });
     return matched ? cleanTeacherName(matched.name) : cleaned;
   };
+
+  const courseFullName = entry.courseName || COURSE_NAMES[entry.course] || "";
+
+  // Strictly filter out course code, course full name, and semester/section labels from teacher list
+  const validTeachers = (Array.isArray(entry.teachers) ? entry.teachers : [entry.teachers])
+    .filter(name => {
+      if (!name || typeof name !== "string") return false;
+      const trimmed = name.trim();
+      if (trimmed === "" || trimmed === "TBA") return false;
+
+      // Exclude if it equals course code
+      if (trimmed.toLowerCase() === entry.course.toLowerCase()) return false;
+
+      // Exclude if it equals course full name
+      if (courseFullName && trimmed.toLowerCase() === courseFullName.toLowerCase()) return false;
+
+      // Exclude semester / section text like "7th - Section B", "Section A", "7th Sem", "33rd - 7th B"
+      if (/^\d+(?:st|nd|rd|th)?\s*-\s*Section/i.test(trimmed) || /^Section\s+[A-Za-z0-9]/i.test(trimmed) || /^\d+(?:st|nd|rd|th)?\s*(?:Sem|Semester)/i.test(trimmed)) return false;
+
+      // Exclude generic course title keywords
+      if (/^(Digital Image Processing|Artificial Intelligence|Computer Networks|Microcontroller|Technical Report Writing|Theory|Lab\b|Engineering|Management|Accounting)/i.test(trimmed)) return false;
+
+      return true;
+    });
+
+  const displayTeachersList = validTeachers.length > 0
+    ? validTeachers.filter((t, i, arr) => arr.indexOf(t) === i)
+    : ["Faculty Member"];
   
   return (
     <div
-      className={`rounded-lg border-l-4 p-4 ${slotColors[entry.slot] || "bg-card border-l-gray-300"} animate-fade-in shadow-sm hover:shadow-md transition-shadow`}
+      className={`group rounded-xl border-l-4 p-4 ${slotColors[entry.slot] || "bg-card border-l-gray-300"} animate-fade-in shadow-sm hover:shadow-md transition-all`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1 flex flex-col items-start gap-1.5">
+      <div className="flex items-stretch justify-between gap-3 min-h-[72px]">
+        <div className="min-w-0 flex-1 flex flex-col items-start gap-1.5 justify-between">
           <div className="flex items-center flex-wrap gap-1.5">
-            <span className="text-sm font-bold text-foreground items-center gap-1.5 flex bg-primary/5 px-2 py-0.5 rounded-md text-primary">
+            <span className="text-xs font-bold text-foreground items-center gap-1.5 flex bg-primary/5 px-2 py-0.5 rounded-md text-primary">
               {timeText}
             </span>
             {entry.colspan && entry.colspan > 1 && (
@@ -81,14 +110,20 @@ export function ClassCard({ entry, showSection = false, teacherInfo = [] }: Clas
               {entry.courseName || COURSE_NAMES[entry.course]}
             </p>
           )}
-          <p className="text-xs text-muted-foreground font-semibold flex items-center gap-1">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />
-            {entry.teachers.map(t => getTeacherDisplayName(t)).join(", ")}
+          <p className="text-xs text-muted-foreground font-semibold flex items-center gap-1 mt-0.5 truncate">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+            <span className="truncate">
+              {displayTeachersList.map(t => getTeacherDisplayName(t)).join(", ")}
+            </span>
           </p>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <span className="shrink-0 rounded-md bg-secondary px-2.5 py-1 text-xs font-bold text-secondary-foreground uppercase">
+        <div className="flex flex-col items-end justify-between shrink-0 self-stretch">
+          <span className="shrink-0 rounded-lg bg-secondary px-2.5 py-1 text-xs font-bold text-secondary-foreground uppercase">
             {entry.room}
+          </span>
+          <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-primary/70 group-hover:text-primary transition-colors bg-primary/5 group-hover:bg-primary/10 px-2 py-0.5 rounded-md border border-primary/10">
+            <span>Details</span>
+            <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
           </span>
         </div>
       </div>

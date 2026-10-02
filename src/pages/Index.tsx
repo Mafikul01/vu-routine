@@ -17,7 +17,7 @@ import {
   ClassEntry,
   routineData as staticRoutineData,
 } from "@/data/routineData";
-import { GraduationCap, User, UserPlus, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, CodeXml, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote, FileText, Bus, Edit2, Save, Sparkles, Download } from "lucide-react";
+import { GraduationCap, User, UserPlus, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, CodeXml, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote, FileText, Bus, Edit2, Save, Sparkles, Download, Wifi, WifiOff } from "lucide-react";
 import { useTheme } from "@/components/ThemeContext";
 import { toast } from "@/components/ui/sonner";
 import { motion, AnimatePresence } from "motion/react";
@@ -40,6 +40,7 @@ import {
 import { AiAssistant } from "@/components/AiAssistant";
 import { GuidedTour } from "@/components/GuidedTour";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { PWAInstallDialog } from "@/components/PWAInstallDialog";
 import { fullDepartmentRoutine } from "@/data/fullDepartmentRoutine";
 import {
@@ -260,6 +261,10 @@ export default function Index() {
   const { isInstalled, isInstallable, isIOS, promptInstall } = usePWAInstall();
   const [isPWAInstallDialogOpen, setIsPWAInstallDialogOpen] = useState(false);
 
+  // Online / Offline Network Status
+  const isOnline = useOnlineStatus();
+  const prevOnlineRef = useRef(isOnline);
+
   // Onboarding State Machine
   // Flow: ROLE_SELECTION -> PREFERENCES_SELECTION -> ROUTINE_LOADING -> GUIDED_TOUR -> COMPLETED
   // This ensures deterministic state transitions without race conditions.
@@ -435,6 +440,27 @@ export default function Index() {
       }
     }
   }, [adminSettings.infoGid, adminSettings.mainSheetUrl, adminSettings.semesterGids, adminSettings.easymateSession, semester, section]);
+
+  // Online / Offline Network Status Transitions
+  useEffect(() => {
+    if (prevOnlineRef.current !== isOnline) {
+      if (!isOnline) {
+        setLocalToast({
+          message: "Offline Mode: Showing cached routine",
+          type: "error"
+        });
+        setTimeout(() => setLocalToast(null), 4000);
+      } else {
+        setLocalToast({
+          message: "Back Online: Connected to University Server",
+          type: "success"
+        });
+        setTimeout(() => setLocalToast(null), 4000);
+        fetchDynamicRoutine(semester, section);
+      }
+      prevOnlineRef.current = isOnline;
+    }
+  }, [isOnline, semester, section, fetchDynamicRoutine]);
 
   const [devName, setDevName] = useState("");
   const [devStudentId, setDevStudentId] = useState("");
@@ -928,6 +954,13 @@ export default function Index() {
       return;
     }
 
+    // For iOS devices, always show the guided iOS dialog
+    if (isIOS) {
+      setIsPWAInstallDialogOpen(true);
+      return;
+    }
+
+    // For Android / Chromium / Desktop, prompt native install if available
     if (isInstallable) {
       const outcome = await promptInstall();
       if (outcome === "accepted") {
@@ -940,27 +973,6 @@ export default function Index() {
       setIsPWAInstallDialogOpen(true);
     }
   };
-
-  // 100% check: Auto-prompt PWA installation on routine entry ONLY if not already running as PWA
-  useEffect(() => {
-    if (isInstalled) return;
-
-    // Check if dismissed recently (within 3 days)
-    const lastDismissed = localStorage.getItem("pwa-install-dismissed-time");
-    if (lastDismissed) {
-      const daysSince = (Date.now() - Number(lastDismissed)) / (1000 * 60 * 60 * 24);
-      if (daysSince < 3) return;
-    }
-
-    // Prompt gently after routine view is ready
-    const timer = setTimeout(() => {
-      if (!isInstalled) {
-        setIsPWAInstallDialogOpen(true);
-      }
-    }, 2500);
-
-    return () => clearTimeout(timer);
-  }, [isInstalled]);
 
   const handleRoleSelect = (r: Role) => {
     setRole(r);
@@ -1137,11 +1149,35 @@ export default function Index() {
               {getFormattedDate()}
             </p>
           </div>
-          {lastSynced && (
-            <p className="mt-0.5 text-[10px] text-muted-foreground/60">
-              Synced at {lastSynced}
-            </p>
-          )}
+          {/* Connection & Sync Status Indicator */}
+          <div className="flex items-center gap-2 mt-1">
+            {isOnline ? (
+              <button
+                onClick={() => {
+                  fetchDynamicRoutine(semester, section);
+                  syncFullRoutineNow();
+                }}
+                disabled={isSyncing || isSyncingFull}
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all cursor-pointer shadow-xs active:scale-95"
+                title="Connected to university server. Click to refresh live routine."
+              >
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                </span>
+                <span>Live Server</span>
+                {lastSynced && <span className="opacity-70 font-normal">({lastSynced})</span>}
+              </button>
+            ) : (
+              <div 
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 shadow-xs"
+                title="Offline mode active. Showing cached schedule."
+              >
+                <WifiOff className="h-3 w-3 animate-pulse text-amber-600 dark:text-amber-400" />
+                <span>Offline (Cached)</span>
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex flex-col items-end gap-2 relative" ref={menuRef}>
           <div className="flex gap-2">
@@ -1817,7 +1853,7 @@ export default function Index() {
                       return normTName.includes(normName) || normName.includes(normTName) || (normTInitials && normTInitials === normName);
                     });
                     const displayName = cleanTeacherName(info?.name || name);
-                    const designation = info?.designation || (displayName === "Faculty Member" ? "" : "Lecturer");
+                    const designation = info?.designation?.trim() || "";
 
                     return (
                       <div key={idx} className="rounded-xl border p-3.5 space-y-2.5 bg-card shadow-sm">

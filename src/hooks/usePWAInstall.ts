@@ -6,7 +6,12 @@ export interface BeforeInstallPromptEvent extends Event {
 }
 
 export function usePWAInstall() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(() => {
+    if (typeof window !== "undefined" && (window as unknown as { deferredPWAInstallPrompt?: BeforeInstallPromptEvent }).deferredPWAInstallPrompt) {
+      return (window as unknown as { deferredPWAInstallPrompt: BeforeInstallPromptEvent }).deferredPWAInstallPrompt;
+    }
+    return null;
+  });
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
 
@@ -38,6 +43,10 @@ export function usePWAInstall() {
     const isIOSDevice = /iphone|ipad|ipod/.test(ua) && !(window as unknown as { MSStream?: unknown }).MSStream;
     setIsIOS(isIOSDevice);
 
+    if (typeof window !== "undefined" && (window as unknown as { deferredPWAInstallPrompt?: BeforeInstallPromptEvent }).deferredPWAInstallPrompt) {
+      setDeferredPrompt((window as unknown as { deferredPWAInstallPrompt: BeforeInstallPromptEvent }).deferredPWAInstallPrompt);
+    }
+
     // Watch for media query change to standalone
     const mq = window.matchMedia("(display-mode: standalone)");
     const handleMQChange = (e: MediaQueryListEvent) => {
@@ -53,12 +62,14 @@ export function usePWAInstall() {
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
+      (window as unknown as { deferredPWAInstallPrompt?: Event }).deferredPWAInstallPrompt = e;
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
 
     const handleAppInstalled = () => {
       setIsInstalled(true);
       setDeferredPrompt(null);
+      (window as unknown as { deferredPWAInstallPrompt?: null }).deferredPWAInstallPrompt = null;
       localStorage.setItem("pwa-is-installed", "true");
     };
 
@@ -75,17 +86,20 @@ export function usePWAInstall() {
   }, [checkIsInstalled]);
 
   const promptInstall = useCallback(async (): Promise<"accepted" | "dismissed" | "unavailable"> => {
-    if (!deferredPrompt) {
+    const activePrompt = deferredPrompt || (typeof window !== "undefined" ? (window as unknown as { deferredPWAInstallPrompt?: BeforeInstallPromptEvent }).deferredPWAInstallPrompt : null);
+    
+    if (!activePrompt) {
       return "unavailable";
     }
 
     try {
-      await deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
+      await activePrompt.prompt();
+      const choice = await activePrompt.userChoice;
       if (choice.outcome === "accepted") {
         setIsInstalled(true);
         localStorage.setItem("pwa-is-installed", "true");
         setDeferredPrompt(null);
+        (window as unknown as { deferredPWAInstallPrompt?: null }).deferredPWAInstallPrompt = null;
         return "accepted";
       }
       return "dismissed";
