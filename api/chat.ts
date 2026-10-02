@@ -1,5 +1,18 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI } from '@google/genai';
+
+interface VercelRequest {
+  method?: string;
+  body?: any;
+  query?: Record<string, string | string[]>;
+  headers: Record<string, string | string[] | undefined>;
+}
+
+interface VercelResponse {
+  status: (code: number) => VercelResponse;
+  json: (body: any) => void;
+  send: (body: any) => void;
+  setHeader: (name: string, value: string) => void;
+}
 
 // In-memory response cache
 // Persists during the lifetime of a specific serverless function instance execution context.

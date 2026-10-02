@@ -7,8 +7,7 @@ import { GoogleGenAI } from "@google/genai";
 import { fullDepartmentRoutine } from "./src/data/fullDepartmentRoutine";
 import { ClassEntry } from "./src/data/routineData";
 
-const _filename = typeof __filename !== 'undefined' ? __filename : fileURLToPath(import.meta.url);
-const _dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(_filename);
+const _dirname = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
 
 // Simple rate-limiting map to prevent users from spamming requests too fast
 const userLastRequestTimes = new Map<string, number>();

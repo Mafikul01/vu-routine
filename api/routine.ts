@@ -1,4 +1,16 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+interface VercelRequest {
+  method?: string;
+  body?: any;
+  query?: Record<string, string | string[]>;
+  headers: Record<string, string | string[] | undefined>;
+}
+
+interface VercelResponse {
+  status: (code: number) => VercelResponse;
+  json: (body: any) => void;
+  send: (body: any) => void;
+  setHeader: (name: string, value: string) => void;
+}
 
 let activeUniversityCookieHeader: string = '';
 let isLoggingIn = false;
