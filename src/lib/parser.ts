@@ -229,6 +229,19 @@ export function parseUniversityRoutineHtml(html: string, semester: number = 7, s
               teachers.push(...extracted);
             }
           } else {
+            // Check if this text is a batch, semester, or section label (e.g. "33rd - 7th B", "33rd - 7th", "7th B", "Section B")
+            const isSemesterSectionInfo =
+              /^\d+(?:st|nd|rd|th)?\s*[-\/]?\s*\d*(?:st|nd|rd|th)?\s*\(?[A-Za-z0-9]?\)?$/i.test(text) ||
+              /\b\d+(?:st|nd|rd|th)\b/i.test(text) ||
+              /\b(Section|Semester|Sem|Batch)\b/i.test(text) ||
+              /^\d+[A-Za-z]$/i.test(text) ||
+              /^[A-Za-z]\s*\(\d+(?:st|nd|rd|th)\)/i.test(text);
+
+            if (isSemesterSectionInfo) {
+              // Ignore batch/semester/section line so it never pollutes teacher or course fields
+              continue;
+            }
+
             // Check if this text is a course title
             const isCourseTitle = /(\blab\b|\btheory\b|\bengineering\b|\bmanagement\b|\baccountancy\b|\bmathematics\b|\bphysics\b|\bchemistry\b|\bprogramming\b|\bintelligence\b|\bnetwork\b|\bdatabase\b|\beconomics\b|\barchitecture\b|\bmicrocontroller\b|\bperipherals\b|\binterfacing\b|\bwriting\b|\bprocessing\b|\bsystem\b|\belectronic\b|\bcircuits\b)/i.test(text);
 
@@ -269,10 +282,19 @@ export function parseUniversityRoutineHtml(html: string, semester: number = 7, s
           }
         }
 
-        // Clean teachers list - eliminate placeholder names
+        // Clean teachers list - eliminate placeholder names and semester/batch/course strings
         let cleanTeachers = teachers
           .map(t => t.replace(/^(Teacher|Faculty|Instructor):?\s*/i, "").trim())
-          .filter(Boolean);
+          .filter(t => {
+            if (!t) return false;
+            if (t.toLowerCase() === course.toLowerCase()) return false;
+            if (courseName && t.toLowerCase() === courseName.toLowerCase()) return false;
+            if (/^\d+(?:st|nd|rd|th)?\s*[-\/]?\s*\d*(?:st|nd|rd|th)?\s*\(?[A-Za-z0-9]?\)?$/i.test(t)) return false;
+            if (/\b\d+(?:st|nd|rd|th)\b/i.test(t)) return false;
+            if (/\b(Section|Semester|Sem|Batch)\b/i.test(t)) return false;
+            if (/^\d+[A-Za-z]$/i.test(t)) return false;
+            return true;
+          });
 
         if (cleanTeachers.length === 0) {
           cleanTeachers = ["Faculty Member"];

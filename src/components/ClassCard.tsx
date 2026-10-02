@@ -45,27 +45,33 @@ export function ClassCard({ entry, showSection = false, teacherInfo = [] }: Clas
 
   const courseFullName = entry.courseName || COURSE_NAMES[entry.course] || "";
 
-  // Strictly filter out course code, course full name, and semester/section labels from teacher list
+  // Strictly filter out course code, course full name, and any semester/section/batch labels from teacher list
+  const isNonTeacherString = (str: string): boolean => {
+    if (!str || typeof str !== "string") return true;
+    const trimmed = str.trim();
+    if (trimmed === "" || trimmed === "TBA") return true;
+
+    // Exclude if it equals course code
+    if (trimmed.toLowerCase() === entry.course.toLowerCase()) return true;
+
+    // Exclude if it equals course full name
+    if (courseFullName && trimmed.toLowerCase() === courseFullName.toLowerCase()) return true;
+
+    // Exclude ANY semester, batch, or section string (e.g. "33rd - 7th B", "33rd - 7th", "7th B", "7th - B", "7th(B)", "7th Sem", "7th Semester", "Section A", "33rd", "Batch 33")
+    if (/^\d+(?:st|nd|rd|th)?\s*[-\/]?\s*\d*(?:st|nd|rd|th)?\s*\(?[A-Za-z0-9]?\)?$/i.test(trimmed)) return true;
+    if (/\b\d+(?:st|nd|rd|th)\b/i.test(trimmed)) return true;
+    if (/\b(Section|Semester|Sem|Batch)\b/i.test(trimmed)) return true;
+    if (/^\d+[A-Za-z]$/i.test(trimmed)) return true;
+    if (/^[A-Za-z]\s*\(\d+(?:st|nd|rd|th)\)/i.test(trimmed)) return true;
+
+    // Exclude generic course title keywords
+    if (/^(Digital Image Processing|Artificial Intelligence|Computer Networks|Microcontroller|Technical Report Writing|Theory|Lab\b|Engineering|Management|Accounting|Database|Software|Operating)/i.test(trimmed)) return true;
+
+    return false;
+  };
+
   const validTeachers = (Array.isArray(entry.teachers) ? entry.teachers : [entry.teachers])
-    .filter(name => {
-      if (!name || typeof name !== "string") return false;
-      const trimmed = name.trim();
-      if (trimmed === "" || trimmed === "TBA") return false;
-
-      // Exclude if it equals course code
-      if (trimmed.toLowerCase() === entry.course.toLowerCase()) return false;
-
-      // Exclude if it equals course full name
-      if (courseFullName && trimmed.toLowerCase() === courseFullName.toLowerCase()) return false;
-
-      // Exclude semester / section text like "7th - Section B", "Section A", "7th Sem", "33rd - 7th B"
-      if (/^\d+(?:st|nd|rd|th)?\s*-\s*Section/i.test(trimmed) || /^Section\s+[A-Za-z0-9]/i.test(trimmed) || /^\d+(?:st|nd|rd|th)?\s*(?:Sem|Semester)/i.test(trimmed)) return false;
-
-      // Exclude generic course title keywords
-      if (/^(Digital Image Processing|Artificial Intelligence|Computer Networks|Microcontroller|Technical Report Writing|Theory|Lab\b|Engineering|Management|Accounting)/i.test(trimmed)) return false;
-
-      return true;
-    });
+    .filter(name => !isNonTeacherString(name));
 
   const displayTeachersList = validTeachers.length > 0
     ? validTeachers.filter((t, i, arr) => arr.indexOf(t) === i)

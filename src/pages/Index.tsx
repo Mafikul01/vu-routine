@@ -1747,7 +1747,7 @@ export default function Index() {
         {selectedEntry && (() => {
           const courseFullName = selectedEntry.courseName || COURSE_NAMES[selectedEntry.course];
           
-          // Filter out course names, section names, or invalid non-teacher strings from teachers list
+          // Filter out course names, section names, batch, semester, or invalid non-teacher strings from teachers list
           const rawTeacherList = Array.isArray(selectedEntry.teachers) ? selectedEntry.teachers : [selectedEntry.teachers];
           const validTeachers = rawTeacherList.filter(name => {
             if (!name || typeof name !== "string") return false;
@@ -1756,10 +1756,14 @@ export default function Index() {
             // Exclude if it's identical to course code or course name
             if (trimmed.toLowerCase() === selectedEntry.course.toLowerCase()) return false;
             if (courseFullName && trimmed.toLowerCase() === courseFullName.toLowerCase()) return false;
-            // Exclude if it's section/semester string like "7th - Section C" or "Section A"
-            if (/^\d+(?:st|nd|rd|th)?\s*-\s*Section/i.test(trimmed) || /^Section\s+[A-Za-z0-9]/i.test(trimmed)) return false;
+            // Exclude semester / section / batch strings
+            if (/^\d+(?:st|nd|rd|th)?\s*[-\/]?\s*\d*(?:st|nd|rd|th)?\s*\(?[A-Za-z0-9]?\)?$/i.test(trimmed)) return false;
+            if (/\b\d+(?:st|nd|rd|th)\b/i.test(trimmed)) return false;
+            if (/\b(Section|Semester|Sem|Batch)\b/i.test(trimmed)) return false;
+            if (/^\d+[A-Za-z]$/i.test(trimmed)) return false;
+            if (/^[A-Za-z]\s*\(\d+(?:st|nd|rd|th)\)/i.test(trimmed)) return false;
             // Exclude course title keywords if mistaken
-            if (/^(Digital Image Processing|Artificial Intelligence|Computer Networks|Microcontroller|Technical Report Writing|Theory|Lab)/i.test(trimmed)) return false;
+            if (/^(Digital Image Processing|Artificial Intelligence|Computer Networks|Microcontroller|Technical Report Writing|Theory|Lab\b|Engineering|Management|Accounting|Database|Software|Operating)/i.test(trimmed)) return false;
             return true;
           });
 
