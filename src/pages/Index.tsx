@@ -106,16 +106,18 @@ const getFormattedDate = () => {
 export interface BusTrip {
   trip: string;
   fromUniversity: string;
-  fromCity: string;
+  fromBheripara: string;
+  fromBornali: string;
   fromVearipara?: string;
   fromCourtStation?: string;
+  fromCity?: string;
 }
 
 const DEFAULT_BUS_SCHEDULE: BusTrip[] = [
-  { trip: "Trip 1", fromUniversity: "-", fromVearipara: "08:00 AM", fromCourtStation: "08:15 AM", fromCity: "08:00 AM (V) / 08:15 AM (C)" },
-  { trip: "Trip 2", fromUniversity: "-", fromVearipara: "09:20 AM", fromCourtStation: "09:20 AM", fromCity: "09:20 AM" },
-  { trip: "Trip 3", fromUniversity: "12:25 PM", fromVearipara: "01:10 PM", fromCourtStation: "01:10 PM", fromCity: "01:10 PM" },
-  { trip: "Trip 4", fromUniversity: "04:15 PM", fromVearipara: "-", fromCourtStation: "-", fromCity: "-" }
+  { trip: "Trip 1", fromUniversity: "-", fromBheripara: "08:00 AM", fromBornali: "08:15 AM", fromVearipara: "08:00 AM", fromCourtStation: "08:15 AM" },
+  { trip: "Trip 2", fromUniversity: "-", fromBheripara: "09:20 AM", fromBornali: "09:20 AM", fromVearipara: "09:20 AM", fromCourtStation: "09:20 AM" },
+  { trip: "Trip 3", fromUniversity: "01:00 PM", fromBheripara: "01:45 PM", fromBornali: "01:45 PM", fromVearipara: "01:45 PM", fromCourtStation: "01:45 PM" },
+  { trip: "Trip 4", fromUniversity: "05:15 PM", fromBheripara: "-", fromBornali: "-", fromVearipara: "-", fromCourtStation: "-" }
 ];
 
 export default function Index() {
@@ -637,7 +639,20 @@ export default function Index() {
           busSchedule?: BusTrip[];
           easymateSession?: string;
         };
-        setAdminSettings(prev => ({ ...prev, ...data }));
+
+        const isLegacySchedule = !Array.isArray(data.busSchedule) || 
+                                data.busSchedule.length === 0 || 
+                                !data.busSchedule[0].fromBornali ||
+                                (data.busSchedule[0].fromBornali && data.busSchedule[0].fromBornali.includes("08:10")) ||
+                                (data.busSchedule[0].fromCourtStation && data.busSchedule[0].fromCourtStation.includes("08:10"));
+
+        const resolvedBusSchedule = isLegacySchedule ? DEFAULT_BUS_SCHEDULE : data.busSchedule;
+
+        setAdminSettings(prev => ({ 
+          ...prev, 
+          ...data,
+          busSchedule: resolvedBusSchedule
+        }));
         setNewMainSheetUrl(data.mainSheetUrl);
         setNewInfoGid(data.infoGid);
         setNewGithubUsername(data.githubUsername || "mafikul01");
@@ -647,7 +662,7 @@ export default function Index() {
         setDevFacebook(data.devFacebook || "mafikul01");
         setDevLinkedin(data.devLinkedin || "mafikul01");
         setDevWhatsapp(data.devWhatsapp || "01788302771");
-        setNewBusSchedule(data.busSchedule || DEFAULT_BUS_SCHEDULE);
+        setNewBusSchedule(resolvedBusSchedule);
         setNewEasymateSession(data.easymateSession || "");
       }
     });
@@ -2039,31 +2054,31 @@ export default function Index() {
             {!isEditingBusSchedule ? (
               <>
                 <p className="text-xs text-muted-foreground mb-4 text-center bg-secondary/50 py-1.5 rounded-full inline-block px-4 mx-auto w-fit block font-medium">
-                  Effective from July 14, 2026
+                  Effective from October 1, 2026 (১ অক্টোবর, ২০২৬ থেকে কার্যকর)
                 </p>
                 
                 <div className="rounded-xl border overflow-hidden">
                   <table className="w-full text-sm text-left">
                     <thead className="bg-secondary/50 text-xs text-muted-foreground uppercase tracking-wider">
                       <tr>
-                        <th className="py-3 px-4 font-semibold border-b">Trip No</th>
-                        <th className="py-3 px-4 font-semibold border-b">From Varsity</th>
-                        <th className="py-3 px-4 font-semibold border-b">Vearipara (R-1)</th>
-                        <th className="py-3 px-4 font-semibold border-b">Court Stn (R-2)</th>
+                        <th className="py-3 px-3 font-semibold border-b">Trip No</th>
+                        <th className="py-3 px-3 font-semibold border-b">From Varsity</th>
+                        <th className="py-3 px-3 font-semibold border-b">Bheripara (R-1)</th>
+                        <th className="py-3 px-3 font-semibold border-b">Bornali (R-2)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y text-sm">
-                      {(adminSettings.busSchedule || []).map((trip, idx) => (
+                      {(adminSettings.busSchedule || DEFAULT_BUS_SCHEDULE).map((trip, idx) => (
                         <tr key={idx} className="hover:bg-muted/50 transition-colors">
-                          <td className="py-3 px-4 font-medium whitespace-nowrap text-foreground">Trip - {trip.trip.replace(/^Trip\s*-?\s*/i, '').trim()}</td>
-                          <td className={`py-3 px-4 ${trip.fromUniversity === '-' || !trip.fromUniversity ? 'text-muted-foreground' : 'font-bold text-emerald-600 dark:text-emerald-400'}`}>
+                          <td className="py-3 px-3 font-medium whitespace-nowrap text-foreground">Trip - {trip.trip.replace(/^Trip\s*-?\s*/i, '').trim()}</td>
+                          <td className={`py-3 px-3 ${trip.fromUniversity === '-' || !trip.fromUniversity ? 'text-muted-foreground' : 'font-bold text-emerald-600 dark:text-emerald-400'}`}>
                             {trip.fromUniversity || '-'}
                           </td>
-                          <td className={`py-3 px-4 ${(!trip.fromVearipara || trip.fromVearipara === '-') && (!trip.fromCity || trip.fromCity === '-') ? 'text-muted-foreground' : 'font-bold text-indigo-600 dark:text-indigo-400'}`}>
-                            {trip.fromVearipara || trip.fromCity || '-'}
+                          <td className={`py-3 px-3 ${(!trip.fromBheripara && !trip.fromVearipara && !trip.fromCity) || trip.fromBheripara === '-' || trip.fromVearipara === '-' ? 'text-muted-foreground' : 'font-bold text-indigo-600 dark:text-indigo-400'}`}>
+                            {trip.fromBheripara || trip.fromVearipara || trip.fromCity || '-'}
                           </td>
-                          <td className={`py-3 px-4 ${(!trip.fromCourtStation || trip.fromCourtStation === '-') && (!trip.fromCity || trip.fromCity === '-') ? 'text-muted-foreground' : 'font-bold text-violet-600 dark:text-violet-400'}`}>
-                            {trip.fromCourtStation || trip.fromCity || '-'}
+                          <td className={`py-3 px-3 ${(!trip.fromBornali && !trip.fromCourtStation && !trip.fromCity) || trip.fromBornali === '-' || trip.fromCourtStation === '-' ? 'text-muted-foreground' : 'font-bold text-violet-600 dark:text-violet-400'}`}>
+                            {trip.fromBornali || trip.fromCourtStation || trip.fromCity || '-'}
                           </td>
                         </tr>
                       ))}
@@ -2071,38 +2086,69 @@ export default function Index() {
                   </table>
                 </div>
 
+                {/* Return Trips Callout */}
+                <div className="mt-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-900 dark:text-emerald-200">
+                  <p className="text-xs font-bold flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    Return Trips (From Varendra University):
+                  </p>
+                  <p className="text-xs font-medium mt-1">
+                    Departure Times: <span className="font-bold">01:00 PM</span> (দুপুর ০১:০০), <span className="font-bold">05:15 PM</span> (বিকাল ০৫:১৫)
+                  </p>
+                </div>
+
                 <div className="mt-4 border rounded-xl p-4 bg-muted/20 space-y-3">
                   <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                     <svg className="h-4 w-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                     </svg>
-                    Bus Routes Stoppages
+                    Bus Routes & Stoppages
                   </h4>
-                  <div className="space-y-2.5 text-xs text-muted-foreground">
-                    <div className="space-y-1">
-                      <p className="font-semibold text-primary/95 flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                        Route 1 (Vearipara More to University)
-                      </p>
+                  <div className="space-y-3 text-xs text-muted-foreground">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold text-primary/95 flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                          Route 1 (Bheripara Mor to University)
+                        </p>
+                        <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">
+                          08:00 AM • 09:20 AM • 01:45 PM
+                        </span>
+                      </div>
                       <p className="leading-relaxed pl-3 border-l border-indigo-200 dark:border-indigo-900 ml-1">
-                        Vearipara More ➔ C&B More ➔ Fire Service More ➔ Museum More ➔ Moni Chattar ➔ Zero Point ➔ Alupatti ➔ Hadir More ➔ Talaimari ➔ Northern More ➔ Bhadra More ➔ Varendra University
+                        Bheripara Mor ➔ C&B Mor ➔ Fire Service Mor ➔ Jadughar Mor ➔ Moni Chattar ➔ Zero Point ➔ Alupatti ➔ Hadir Mor ➔ Talaimari ➔ Nordan Mor ➔ Bhadra Mor ➔ Varendra University
                       </p>
                     </div>
-                    <div className="space-y-1">
-                      <p className="font-semibold text-primary/95 flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-violet-500"></span>
-                        Route 2 (Court Station to University)
-                      </p>
+
+                    <div className="space-y-1.5 pt-1 border-t border-border/40">
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold text-primary/95 flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-violet-500"></span>
+                          Route 2 (Bornali Mor to University)
+                        </p>
+                        <span className="text-[10px] font-bold text-violet-600 dark:text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full">
+                          08:15 AM • 09:20 AM • 01:45 PM
+                        </span>
+                      </div>
                       <p className="leading-relaxed pl-3 border-l border-violet-200 dark:border-violet-900 ml-1">
-                        Court Station ➔ Tultuli Para ➔ Dingadoba Mission More ➔ Daspukur More ➔ City Bypass More ➔ Bornali More ➔ Nagar Bhaban More ➔ Railgate ➔ Shalbagan Bazar ➔ Biman Chattar ➔ Varendra University
+                        Bornali Mor ➔ Nagar Bhaban Mor ➔ Railgate ➔ Shalbagan Bazar ➔ Biman Chattar ➔ Varendra University
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-4 p-3 rounded-lg bg-orange-50 dark:bg-orange-950/20 text-orange-800 dark:text-orange-200 border border-orange-100 dark:border-orange-900/50 flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                  <p className="text-xs">Schedule is subject to change. Please confirm with university transport for the most up-to-date timings.</p>
+                {/* Important Guidelines */}
+                <div className="mt-4 border rounded-xl p-3.5 bg-secondary/30 space-y-2 text-xs">
+                  <p className="font-semibold text-foreground flex items-center gap-1.5">
+                    <Info className="h-3.5 w-3.5 text-primary" />
+                    পরিবহন সেবা ব্যবহারের নিয়মাবলী:
+                  </p>
+                  <ul className="space-y-1 text-[11px] text-muted-foreground list-disc list-inside">
+                    <li>শুধুমাত্র রেজিস্ট্রেশনকৃত শিক্ষার্থীরা বাস সেবা ব্যবহার করতে পারবে।</li>
+                    <li>বাসে ওঠার সময় অবশ্যই আইডি কার্ড পাঞ্চ করে উঠতে হবে (নগদ টাকা সম্পূর্ণরূপে নিষেধ)।</li>
+                    <li><strong>services.vu.edu.bd</strong> পোর্টালে রিচার্জ করা যাবে (১ কর্মদিবস পর কার্যকর)।</li>
+                    <li>স্টপেজ ব্যতীত গাড়ি থামানো এবং ওঠানামা সম্পূর্ণ নিষেধ।</li>
+                  </ul>
                 </div>
               </>
             ) : (
@@ -2148,24 +2194,25 @@ export default function Index() {
                           />
                        </div>
                        <div>
-                          <label className="text-[10px] uppercase font-bold text-muted-foreground mb-1 block">From Vearipara</label>
+                          <label className="text-[10px] uppercase font-bold text-muted-foreground mb-1 block">From Bheripara (R-1)</label>
                           <input 
-                            value={trip.fromVearipara || trip.fromCity || ""}
+                            value={trip.fromBheripara || trip.fromVearipara || trip.fromCity || ""}
                             onChange={(e) => {
                               const updated = [...newBusSchedule];
+                              updated[idx].fromBheripara = e.target.value;
                               updated[idx].fromVearipara = e.target.value;
-                              updated[idx].fromCity = e.target.value;
                               setNewBusSchedule(updated);
                             }}
                             className="w-full rounded-lg border bg-background p-1.5 text-xs outline-none focus:border-primary"
                           />
                        </div>
                        <div>
-                          <label className="text-[10px] uppercase font-bold text-muted-foreground mb-1 block">From Court Stn</label>
+                          <label className="text-[10px] uppercase font-bold text-muted-foreground mb-1 block">From Bornali (R-2)</label>
                           <input 
-                            value={trip.fromCourtStation || trip.fromCity || ""}
+                            value={trip.fromBornali || trip.fromCourtStation || trip.fromCity || ""}
                             onChange={(e) => {
                               const updated = [...newBusSchedule];
+                              updated[idx].fromBornali = e.target.value;
                               updated[idx].fromCourtStation = e.target.value;
                               setNewBusSchedule(updated);
                             }}
@@ -2179,7 +2226,7 @@ export default function Index() {
                 <div className="flex justify-center flex-col gap-2 pt-2">
                   <button
                     onClick={() => {
-                      setNewBusSchedule([...newBusSchedule, { trip: `Trip ${newBusSchedule.length + 1}`, fromUniversity: "-", fromVearipara: "-", fromCourtStation: "-", fromCity: "-" }]);
+                      setNewBusSchedule([...newBusSchedule, { trip: `Trip ${newBusSchedule.length + 1}`, fromUniversity: "-", fromBheripara: "-", fromBornali: "-", fromVearipara: "-", fromCourtStation: "-" }]);
                     }}
                     className="w-full rounded-xl border border-dashed border-primary/50 text-primary py-2.5 text-sm font-bold hover:bg-primary/5 transition-colors"
                   >
