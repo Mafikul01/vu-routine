@@ -30,39 +30,65 @@ export function ThemeProvider({
     () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
   );
 
-  useEffect(() => {
+  const applyTheme = (currentTheme: Theme) => {
     const root = window.document.documentElement;
 
     root.classList.remove("light", "dark");
-    
-    let activeTheme = theme;
 
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
+    let activeTheme = currentTheme;
+    if (currentTheme === "system") {
+      activeTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
         : "light";
-
-      activeTheme = systemTheme;
     }
-    
+
     root.classList.add(activeTheme);
-    
-    // Update theme-color meta tag for mobile status bar
-    const updateThemeColor = (color: string) => {
-      const metas = document.querySelectorAll('meta[name="theme-color"]');
-      if (metas.length === 0) {
-        const metaThemeColor = document.createElement("meta");
-        metaThemeColor.setAttribute("name", "theme-color");
-        metaThemeColor.setAttribute("content", color);
-        document.head.appendChild(metaThemeColor);
+    const isDark = activeTheme === "dark";
+    const color = isDark ? "#020817" : "#ffffff";
+
+    // Set CSS color-scheme so Android/Chrome system status bar & navigation adapt instantly
+    root.style.colorScheme = isDark ? "dark" : "light";
+
+    // Update single theme-color meta tag without media queries to avoid Chrome PWA conflicts
+    const metas = document.querySelectorAll('meta[name="theme-color"]');
+    let found = false;
+    metas.forEach((meta, idx) => {
+      if (idx === 0) {
+        meta.removeAttribute("media");
+        meta.setAttribute("content", color);
+        found = true;
       } else {
-        metas.forEach(meta => meta.setAttribute("content", color));
+        meta.remove();
       }
+    });
+
+    if (!found) {
+      const meta = document.createElement("meta");
+      meta.setAttribute("name", "theme-color");
+      meta.setAttribute("id", "theme-color-meta");
+      meta.setAttribute("content", color);
+      document.head.appendChild(meta);
+    }
+
+    // Update iOS status bar style
+    const appleMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (appleMeta) {
+      appleMeta.setAttribute("content", isDark ? "black-translucent" : "default");
+    }
+
+    // Flutter WebView channel integration
+    const win = window as Window & {
+      ThemeChannel?: {
+        postMessage: (message: string) => void;
+      };
     };
+    if (win.ThemeChannel?.postMessage) {
+      win.ThemeChannel.postMessage(isDark ? "dark" : "light");
+    }
+  };
 
-    updateThemeColor(activeTheme === "dark" ? "#020817" : "#ffffff");
-
+  useEffect(() => {
+    applyTheme(theme);
   }, [theme]);
 
   // Listen for system theme changes if theme is set to 'system'
@@ -71,14 +97,7 @@ export function ThemeProvider({
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = () => {
-      const root = window.document.documentElement;
-      const systemTheme = mediaQuery.matches ? "dark" : "light";
-      
-      root.classList.remove("light", "dark");
-      root.classList.add(systemTheme);
-      
-      const metas = document.querySelectorAll('meta[name="theme-color"]');
-      metas.forEach(meta => meta.setAttribute("content", systemTheme === "dark" ? "#020817" : "#ffffff"));
+      applyTheme("system");
     };
 
     mediaQuery.addEventListener("change", handleChange);
@@ -87,9 +106,10 @@ export function ThemeProvider({
 
   const value = {
     theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
+    setTheme: (newTheme: Theme) => {
+      localStorage.setItem(storageKey, newTheme);
+      setTheme(newTheme);
+      applyTheme(newTheme);
     },
   };
 

@@ -17,11 +17,13 @@ import {
   ClassEntry,
   routineData as staticRoutineData,
 } from "@/data/routineData";
-import { GraduationCap, User, UserPlus, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, CodeXml, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote, FileText, Bus, Edit2, Save, Sparkles } from "lucide-react";
+import { GraduationCap, User, UserPlus, ArrowLeftRight, BookOpen, Search, RefreshCcw, LayoutGrid, MapPin, Clock, Phone, SearchCheck, Menu, Info, Users, CodeXml, Github, Facebook, Linkedin, MessageCircle, Lock, LogIn, LogOut, Bell, Settings, X, AlertTriangle, Moon, Sun, Quote, FileText, Bus, Edit2, Save, Sparkles, Download } from "lucide-react";
 import { useTheme } from "@/components/ThemeContext";
 import { toast } from "@/components/ui/sonner";
 import { motion, AnimatePresence } from "motion/react";
-import { getGoogleSheetCsvUrlByGid, parseRoutineCsv, parseTeacherCsv, normalizeBangladeshiPhone } from "@/lib/parser";
+import { getGoogleSheetCsvUrlByGid, parseRoutineCsv, parseTeacherCsv, normalizeBangladeshiPhone, fetchUniversityRoutine, sectionToId, parseUniversityRoutineHtml, getStoredSectionRoutine, saveStoredSectionRoutine } from "@/lib/parser";
+import { RoutineApiService } from "@/services/api";
+import { routineRepository } from "@/services/routineRepository";
 import { Teacher } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { auth, db, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, handleFirestoreError, OperationType } from "@/lib/firebase";
@@ -37,6 +39,16 @@ import {
 } from "@/components/ui/select";
 import { AiAssistant } from "@/components/AiAssistant";
 import { GuidedTour } from "@/components/GuidedTour";
+import { usePWAInstall } from "@/hooks/usePWAInstall";
+import { PWAInstallDialog } from "@/components/PWAInstallDialog";
+import { fullDepartmentRoutine } from "@/data/fullDepartmentRoutine";
+import {
+  useFullRoutineSync,
+  getDepartmentClassesByRoom,
+  getDepartmentClassesBySlot,
+  getDepartmentRoomFreeDays,
+  getDepartmentClassesForTeacher
+} from "@/lib/fullRoutineManager";
 
 const DEFAULT_SHEET = "https://docs.google.com/spreadsheets/d/1Sdmr60rcZeBCa2ofswUr9mxIreIj71W9HYM1RRhvfMM/edit?usp=drivesdk";
 const INFO_GID = "989827005";
@@ -150,8 +162,8 @@ export default function Index() {
   const [isChangingRole, setIsChangingRole] = useState(() => {
     return !localStorage.getItem("routine-role");
   });
-  const [semester, setSemester] = useState(() => Number(localStorage.getItem("routine-semester")) || 1);
-  const [section, setSection] = useState(() => localStorage.getItem("routine-section") || "A");
+  const [semester, setSemester] = useState(() => Number(localStorage.getItem("routine-semester")) || 7);
+  const [section, setSection] = useState(() => localStorage.getItem("routine-section") || "B");
   const [hasSetupPreferences, setHasSetupPreferences] = useState(() => {
     return !!localStorage.getItem("routine-semester") && !!localStorage.getItem("routine-section");
   });
@@ -184,8 +196,21 @@ export default function Index() {
   }, []);
   const [teacherSearch, setTeacherSearch] = useState("");
   const [currentRoutine, setCurrentRoutine] = useState<ClassEntry[]>(() => {
-    const cached = localStorage.getItem("cached-routine");
-    return cached ? JSON.parse(cached) : staticRoutineData;
+    const initSem = Number(localStorage.getItem("routine-semester")) || 7;
+    const initSec = localStorage.getItem("routine-section") || "B";
+    const cached = routineRepository.getCached(initSem, initSec);
+    if (cached && cached.data.length > 0) {
+      return cached.data;
+    }
+    const sectionCached = getStoredSectionRoutine(initSem, initSec);
+    if (sectionCached && sectionCached.length > 0) {
+      return sectionCached;
+    }
+    const inFull = fullDepartmentRoutine.filter(c => c.semester === initSem && c.section.toUpperCase() === initSec.toUpperCase());
+    if (inFull.length > 0) {
+      return inFull;
+    }
+    return staticRoutineData;
   });
   const [teacherInfo, setTeacherInfo] = useState<Teacher[]>(() => {
     const cached = localStorage.getItem("cached-teachers");
@@ -195,6 +220,15 @@ export default function Index() {
   const [lastSynced, setLastSynced] = useState<string | null>(null);
   const [isInitialSyncDone, setIsInitialSyncDone] = useState(false);
   
+  // Full Department Routine Background Sync & Room Management
+  const {
+    fullRoutine,
+    allRooms,
+    allTeachers: departmentTeachers,
+    isSyncingFull,
+    syncFullRoutineNow
+  } = useFullRoutineSync();
+
   // Room Finder states
   const [isRoomFinderOpen, setIsRoomFinderOpen] = useState(false);
   const [roomFinderMode, setRoomFinderMode] = useState<"room" | "time">("room");
@@ -221,6 +255,10 @@ export default function Index() {
   const [isBusScheduleOpen, setIsBusScheduleOpen] = useState(false);
   const [isEditingBusSchedule, setIsEditingBusSchedule] = useState(false);
   const [hasCompletedTour, setHasCompletedTour] = useState(() => localStorage.getItem("routine-tour-completed") === "true");
+
+  // PWA Install states
+  const { isInstalled, isInstallable, isIOS, promptInstall } = usePWAInstall();
+  const [isPWAInstallDialogOpen, setIsPWAInstallDialogOpen] = useState(false);
 
   // Onboarding State Machine
   // Flow: ROLE_SELECTION -> PREFERENCES_SELECTION -> ROUTINE_LOADING -> GUIDED_TOUR -> COMPLETED
@@ -249,7 +287,8 @@ export default function Index() {
     githubUsername?: string,
     devProfileImage?: string,
     adminEmails?: string[],
-    busSchedule?: BusTrip[]
+    busSchedule?: BusTrip[];
+    easymateSession?: string;
   }>({ 
     mainSheetUrl: DEFAULT_SHEET, 
     infoGid: INFO_GID,
@@ -257,7 +296,8 @@ export default function Index() {
     githubUsername: "mafikul01",
     devProfileImage: "",
     adminEmails: ["mafikulmovie@gmail.com"],
-    busSchedule: DEFAULT_BUS_SCHEDULE
+    busSchedule: DEFAULT_BUS_SCHEDULE,
+    easymateSession: localStorage.getItem("easymate-session") || ""
   });
 
   // Notice Dismissal state
@@ -272,11 +312,16 @@ export default function Index() {
   const [newProfileImage, setNewProfileImage] = useState("");
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [newBusSchedule, setNewBusSchedule] = useState<BusTrip[]>(DEFAULT_BUS_SCHEDULE);
+  const [newEasymateSession, setNewEasymateSession] = useState(() => localStorage.getItem("easymate-session") || "");
 
-  const fetchDynamicRoutine = useCallback(async () => {
+  const activeRequestIdRef = useRef(0);
+
+  const fetchDynamicRoutine = useCallback(async (targetSemester?: number, targetSection?: string) => {
+    const requestId = ++activeRequestIdRef.current;
     setIsSyncing(true);
-    let successCount = 0;
-    let failCount = 0;
+
+    const activeSemester = targetSemester ?? semester;
+    const activeSection = targetSection ?? section;
 
     // Reset selected day to current/next day on refresh
     const date = new Date();
@@ -287,9 +332,9 @@ export default function Index() {
     }
     const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     setSelectedDay(days[dayIndex]);
-    
+
     try {
-      // 1. Fetch Teachers Info (runs in parallel with routine fetch)
+      // 1. Fetch Teachers Info (runs in parallel, does not block routine rendering)
       const fetchTeacherInfo = async () => {
         try {
           const infoUrl = getGoogleSheetCsvUrlByGid(adminSettings.mainSheetUrl, adminSettings.infoGid);
@@ -297,7 +342,7 @@ export default function Index() {
           if (infoResponse.ok) {
             const infoCsv = await infoResponse.text();
             let teachers = parseTeacherCsv(infoCsv);
-            
+
             // Custom injection/cleanup
             if (!teachers.some(t => t.name.includes("Faisal Aziz") || t.name.includes("Eco New teacher 3"))) {
               teachers.push({
@@ -310,8 +355,7 @@ export default function Index() {
                 officeRoom: ""
               });
             }
-            
-            // Clean names in teacher info and enrich Faisal Aziz data
+
             teachers = teachers.map(t => {
               const cleanedName = cleanTeacherName(t.name);
               if (cleanedName === "Faisal Aziz") {
@@ -330,87 +374,67 @@ export default function Index() {
               };
             });
 
-            setTeacherInfo(teachers);
-            localStorage.setItem("cached-teachers", JSON.stringify(teachers));
-            successCount++;
-          } else {
-            console.warn(`Teacher info fetch failed: ${infoResponse.status}`);
-            failCount++;
+            if (requestId === activeRequestIdRef.current) {
+              setTeacherInfo(teachers);
+              localStorage.setItem("cached-teachers", JSON.stringify(teachers));
+            }
           }
         } catch (e) {
           console.error("Teacher sync error:", e);
-          failCount++;
         }
       };
 
-      const teacherPromise = fetchTeacherInfo();
+      fetchTeacherInfo();
 
-      // 2. Fetch Routine from dynamic settings
-      const relevantGids = adminSettings.semesterGids || SEMESTER_GIDS;
-      
-      const gidsArray = Object.entries(relevantGids);
-      // Sort so the selected semester is prioritized!
-      gidsArray.sort(([semA], [semB]) => {
-          const selectedSemStr = semester.toString();
-          if (semA === selectedSemStr) return -1;
-          if (semB === selectedSemStr) return 1;
-          return 0;
-      });
-
-      const sessionPromises = gidsArray.map(async ([sem, gid]) => {
-        try {
-          const csvUrl = getGoogleSheetCsvUrlByGid(adminSettings.mainSheetUrl, gid);
-          const response = await fetch(csvUrl, { cache: "no-store" });
-          if (!response.ok) {
-            console.warn(`Routine fetch failed for Sem ${sem}: ${response.status}`);
-            return [];
-          }
-          const csvText = await response.text();
-          const sems = parseRoutineCsv(csvText, parseInt(sem, 10));
-          if (sems.length > 0) {
-            successCount++;
-            // Incrementally update UI with this semester's data immediately so it feels fast
-            setCurrentRoutine(prev => {
-              const otherSems = prev.filter(c => c.semester !== parseInt(sem, 10));
-              return [...otherSems, ...sems];
-            });
-          }
-          return sems;
-        } catch (e) {
-          console.error(`Error fetching Sem ${sem}:`, e);
-          return [];
+      // 2. PRIMARY SOURCE: Real-time University Student Panel via routineRepository
+      // Step A: Stale-While-Revalidate (SWR) - render cached data immediately if present
+      const cached = routineRepository.getCached(activeSemester, activeSection);
+      if (cached && cached.data.length > 0) {
+        setCurrentRoutine(prev => {
+          const otherClasses = prev.filter(c => !(c.semester === activeSemester && c.section.toUpperCase() === activeSection.toUpperCase()));
+          return [...otherClasses, ...cached.data];
+        });
+        if (cached.lastSuccessfulFetch) {
+          setLastSynced(new Date(cached.lastSuccessfulFetch).toLocaleTimeString());
         }
-      });
+      }
 
-      // Wait for both teacher fetch and all routine fetches to complete
-      const [results] = await Promise.all([
-        Promise.all(sessionPromises),
-        teacherPromise
-      ]);
+      // Step B: Fetch fresh authoritative dataset from University Endpoint
+      const sessionCookie = adminSettings.easymateSession || localStorage.getItem("easymate-session") || "";
 
-      const flattened = results.flat();
+      try {
+        const result = await routineRepository.fetchFresh(activeSemester, activeSection, {
+          forceFresh: true,
+          sessionCookie
+        });
 
-      if (flattened.length > 0) {
-        setCurrentRoutine(flattened);
-        localStorage.setItem("cached-routine", JSON.stringify(flattened));
-        setLastSynced(new Date().toLocaleTimeString());
-        setLocalToast({ message: "Routine Updated Successfully", type: "success" });
-        setTimeout(() => setLocalToast(null), 5000);
-      } else if (successCount > 0) {
-        setLocalToast({ message: "Teacher Info Updated", type: "success" });
-        setTimeout(() => setLocalToast(null), 5000);
-      } else {
-        toast.error("Could not fetch new data. Using offline version.");
+        // Race condition protection: Ignore if user switched selection in the meantime
+        if (requestId !== activeRequestIdRef.current) return;
+
+        if (result.data && result.data.length > 0) {
+          setCurrentRoutine(prev => {
+            const otherClasses = prev.filter(c => !(c.semester === activeSemester && c.section.toUpperCase() === activeSection.toUpperCase()));
+            return [...otherClasses, ...result.data];
+          });
+          setLastSynced(new Date().toLocaleTimeString());
+          if (!result.fromCache) {
+            setLocalToast({ message: `Routine Live: Sem ${activeSemester} Sec ${activeSection}`, type: "success" });
+            setTimeout(() => setLocalToast(null), 4000);
+          }
+        }
+      } catch (err) {
+        console.error(`Error fetching primary section ${activeSection}:`, err);
       }
     } catch (error) {
       console.error("Fatal Sync error:", error);
-      toast.error("Sync failed. Check network connection.");
     } finally {
-      setIsSyncing(false);
-      setIsPullRefreshing(false);
-      setIsInitialSyncDone(true);
+      if (requestId === activeRequestIdRef.current) {
+        setIsSyncing(false);
+        setIsPullRefreshing(false);
+        setIsInitialSyncDone(true);
+      }
     }
-  }, [adminSettings.infoGid, adminSettings.mainSheetUrl, adminSettings.semesterGids, semester]);
+  }, [adminSettings.infoGid, adminSettings.mainSheetUrl, adminSettings.semesterGids, adminSettings.easymateSession, semester, section]);
 
   const [devName, setDevName] = useState("");
   const [devStudentId, setDevStudentId] = useState("");
@@ -418,7 +442,7 @@ export default function Index() {
   const [devLinkedin, setDevLinkedin] = useState("");
   const [devWhatsapp, setDevWhatsapp] = useState("");
 
-  const isAnyDialogOpen = !!selectedEntry || isRoomFinderOpen || isBusScheduleOpen || isTeacherDirOpen || isDevInfoOpen || isAdminDialogOpen || isMenuOpen;
+  const isAnyDialogOpen = !!selectedEntry || isRoomFinderOpen || isBusScheduleOpen || isTeacherDirOpen || isDevInfoOpen || isAdminDialogOpen || isMenuOpen || isPWAInstallDialogOpen;
   const wasAnyDialogOpenRef = useRef(false);
 
   useEffect(() => {
@@ -447,6 +471,7 @@ export default function Index() {
         setIsDevInfoOpen(false);
         setIsAdminDialogOpen(false);
         setIsMenuOpen(false);
+        setIsPWAInstallDialogOpen(false);
         wasAnyDialogOpenRef.current = false;
         return;
       }
@@ -584,6 +609,7 @@ export default function Index() {
           devLinkedin?: string;
           devWhatsapp?: string;
           busSchedule?: BusTrip[];
+          easymateSession?: string;
         };
         setAdminSettings(prev => ({ ...prev, ...data }));
         setNewMainSheetUrl(data.mainSheetUrl);
@@ -596,6 +622,7 @@ export default function Index() {
         setDevLinkedin(data.devLinkedin || "mafikul01");
         setDevWhatsapp(data.devWhatsapp || "01788302771");
         setNewBusSchedule(data.busSchedule || DEFAULT_BUS_SCHEDULE);
+        setNewEasymateSession(data.easymateSession || "");
       }
     });
 
@@ -694,6 +721,9 @@ export default function Index() {
 
   const updateSettings = async () => {
     try {
+      localStorage.setItem("easymate-session", newEasymateSession);
+      RoutineApiService.saveSessionCookie(newEasymateSession);
+      setAdminSettings(prev => ({ ...prev, easymateSession: newEasymateSession }));
       await setDoc(doc(db, "settings", "global"), {
         ...adminSettings,
         mainSheetUrl: newMainSheetUrl,
@@ -705,7 +735,8 @@ export default function Index() {
         devFacebook,
         devLinkedin,
         devWhatsapp,
-        busSchedule: newBusSchedule
+        busSchedule: newBusSchedule,
+        easymateSession: newEasymateSession
       });
       toast.success("Settings Saved");
     } catch (e) {
@@ -780,34 +811,32 @@ export default function Index() {
   }, [isMenuOpen]);
 
   useEffect(() => {
-    fetchDynamicRoutine();
+    fetchDynamicRoutine(semester, section);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminSettings.mainSheetUrl, adminSettings.infoGid]);
+  }, [adminSettings.mainSheetUrl, adminSettings.infoGid, semester, section]);
 
-  const teachers = getTeacherList(currentRoutine);
+  const teachers = useMemo(() => {
+    return departmentTeachers.length > 0 ? departmentTeachers : getTeacherList(currentRoutine);
+  }, [departmentTeachers, currentRoutine]);
+
   const availableSections = useMemo(() => {
-    // Dynamically retrieve unique sections loaded in currentRoutine for the selected semester
-    const dynamicSections = Array.from(
-      new Set(
-        currentRoutine
-          .filter(e => e.semester === semester)
-          .map(e => e.section)
-          .filter(Boolean)
-      )
-    ).sort();
-
-    if (dynamicSections.length > 0) {
-      return dynamicSections;
-    }
-    return SEMESTER_SECTIONS[semester] || ["A"];
-  }, [semester, currentRoutine]);
+    const defaultSections = SEMESTER_SECTIONS[semester] || ["A", "B", "C", "D", "E", "F"];
+    const dynamicSections = fullRoutine
+      .filter(e => e.semester === semester)
+      .map(e => e.section)
+      .filter(Boolean);
+    return Array.from(new Set([...defaultSections, ...dynamicSections])).sort();
+  }, [semester, fullRoutine]);
 
   // Reset section if not valid for current semester
   useEffect(() => {
     if (!availableSections.includes(section)) {
-      setSection(availableSections[0]);
+      const targetSec = availableSections[0] || "A";
+      setSection(targetSec);
+      localStorage.setItem("routine-section", targetSec);
+      fetchDynamicRoutine(semester, targetSec);
     }
-  }, [semester, availableSections, section]);
+  }, [semester, availableSections, section, fetchDynamicRoutine]);
 
   useEffect(() => {
     if (role) localStorage.setItem("routine-role", role);
@@ -819,6 +848,119 @@ export default function Index() {
       localStorage.setItem("routine-teacher", selectedTeacher);
     }
   }, [role, semester, section, selectedTeacher, hasSetupPreferences]);
+
+  const formatWhatsappUrl = (phone?: string, text?: string) => {
+    let clean = (phone || "01788302771").replace(/[^0-9]/g, "");
+    if (clean.length === 11 && clean.startsWith("0")) {
+      clean = "88" + clean;
+    }
+    const textParam = text ? `?text=${encodeURIComponent(text)}` : "";
+    return `https://wa.me/${clean}${textParam}`;
+  };
+
+  const formatMessengerUrl = (fb?: string) => {
+    const clean = (fb || "mafikul01").replace(/^https?:\/\/(www\.)?(facebook\.com|m\.me)\//, "").replace(/\/$/, "");
+    return `https://m.me/${clean || "mafikul01"}`;
+  };
+
+  const handleSemesterChange = (newSem: number) => {
+    setSemester(newSem);
+    localStorage.setItem("routine-semester", String(newSem));
+    const newAvail = SEMESTER_SECTIONS[newSem] || ["A", "B", "C", "D", "E", "F"];
+    const targetSec = newAvail.includes(section) ? section : (newAvail[0] || "A");
+    if (targetSec !== section) {
+      setSection(targetSec);
+      localStorage.setItem("routine-section", targetSec);
+    }
+
+    // Stale-While-Revalidate: Immediately show cached routine if available
+    const cached = getStoredSectionRoutine(newSem, targetSec);
+    if (cached && cached.length > 0) {
+      setCurrentRoutine(prev => {
+        const otherClasses = prev.filter(c => !(c.semester === newSem && c.section.toUpperCase() === targetSec.toUpperCase()));
+        return [...otherClasses, ...cached];
+      });
+    } else {
+      const staticMatches = staticRoutineData.filter(c => c.semester === newSem && c.section.toUpperCase() === targetSec.toUpperCase());
+      if (staticMatches.length > 0) {
+        setCurrentRoutine(prev => {
+          const otherClasses = prev.filter(c => !(c.semester === newSem && c.section.toUpperCase() === targetSec.toUpperCase()));
+          return [...otherClasses, ...staticMatches];
+        });
+      } else {
+        // Clear routine for the new selection so old semester classes don't show!
+        setCurrentRoutine(prev => prev.filter(c => !(c.semester === newSem)));
+      }
+    }
+
+    fetchDynamicRoutine(newSem, targetSec);
+  };
+
+  const handleSectionChange = (newSec: string) => {
+    setSection(newSec);
+    localStorage.setItem("routine-section", newSec);
+
+    // Stale-While-Revalidate: Immediately show cached routine if available
+    const cached = getStoredSectionRoutine(semester, newSec);
+    if (cached && cached.length > 0) {
+      setCurrentRoutine(prev => {
+        const otherClasses = prev.filter(c => !(c.semester === semester && c.section.toUpperCase() === newSec.toUpperCase()));
+        return [...otherClasses, ...cached];
+      });
+    } else {
+      const staticMatches = staticRoutineData.filter(c => c.semester === semester && c.section.toUpperCase() === newSec.toUpperCase());
+      if (staticMatches.length > 0) {
+        setCurrentRoutine(prev => {
+          const otherClasses = prev.filter(c => !(c.semester === semester && c.section.toUpperCase() === newSec.toUpperCase()));
+          return [...otherClasses, ...staticMatches];
+        });
+      } else {
+        setCurrentRoutine(prev => prev.filter(c => !(c.semester === semester && c.section.toUpperCase() === newSec.toUpperCase())));
+      }
+    }
+
+    fetchDynamicRoutine(semester, newSec);
+  };
+
+  const handleInstallApp = async () => {
+    if (isInstalled) {
+      toast.info("App is already installed as a PWA!");
+      return;
+    }
+
+    if (isInstallable) {
+      const outcome = await promptInstall();
+      if (outcome === "accepted") {
+        toast.success("App installed successfully! Check your home screen.");
+        setIsPWAInstallDialogOpen(false);
+      } else if (outcome === "dismissed") {
+        toast.info("Installation postponed.");
+      }
+    } else {
+      setIsPWAInstallDialogOpen(true);
+    }
+  };
+
+  // 100% check: Auto-prompt PWA installation on routine entry ONLY if not already running as PWA
+  useEffect(() => {
+    if (isInstalled) return;
+
+    // Check if dismissed recently (within 3 days)
+    const lastDismissed = localStorage.getItem("pwa-install-dismissed-time");
+    if (lastDismissed) {
+      const daysSince = (Date.now() - Number(lastDismissed)) / (1000 * 60 * 60 * 24);
+      if (daysSince < 3) return;
+    }
+
+    // Prompt gently after routine view is ready
+    const timer = setTimeout(() => {
+      if (!isInstalled) {
+        setIsPWAInstallDialogOpen(true);
+      }
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [isInstalled]);
 
   const handleRoleSelect = (r: Role) => {
     setRole(r);
@@ -832,40 +974,34 @@ export default function Index() {
     }
   };
 
-  const allRooms = useMemo(() => Array.from(new Set(currentRoutine.map(e => e.room))).sort(), [currentRoutine]);
-
   const getClassesByRoom = useCallback((day: string, room: string) => {
-    return currentRoutine
-      .filter(e => e.day === day && e.room === room)
-      .sort((a, b) => a.slot - b.slot);
-  }, [currentRoutine]);
+    return getDepartmentClassesByRoom(fullRoutine, day, room);
+  }, [fullRoutine]);
 
   const getClassesBySlot = useCallback((day: string, slot: number) => {
-    return currentRoutine
-      .filter(e => e.day === day && e.slot === slot)
-      .sort((a, b) => a.room.localeCompare(b.room));
-  }, [currentRoutine]);
+    return getDepartmentClassesBySlot(fullRoutine, day, slot);
+  }, [fullRoutine]);
 
   const currentFreeDays = useMemo(() => {
     return DAYS.filter(day => {
       const dayClasses = role === "student"
         ? (hasSetupPreferences ? getClassesForStudent(day, semester, section, currentRoutine) : [])
-        : getClassesForTeacher(day, selectedTeacher, currentRoutine);
+        : getDepartmentClassesForTeacher(fullRoutine, selectedTeacher, day);
       return dayClasses.length === 0;
     });
-  }, [role, semester, section, selectedTeacher, currentRoutine, hasSetupPreferences]);
+  }, [role, semester, section, selectedTeacher, currentRoutine, fullRoutine, hasSetupPreferences]);
 
   const roomFreeDays = useMemo(() => {
     if (selectedRoom) {
-      return DAYS.filter(day => getClassesByRoom(day, selectedRoom).length === 0);
+      return getDepartmentRoomFreeDays(fullRoutine, selectedRoom);
     }
     return [];
-  }, [selectedRoom, getClassesByRoom]);
+  }, [selectedRoom, fullRoutine]);
 
   const classes =
     role === "student"
       ? (hasSetupPreferences ? getClassesForStudent(selectedDay, semester, section, currentRoutine) : [])
-      : getClassesForTeacher(selectedDay, selectedTeacher, currentRoutine);
+      : getDepartmentClassesForTeacher(fullRoutine, selectedTeacher, selectedDay);
 
   const filteredTeachers = teacherSearch
     ? teachers.filter(t => {
@@ -973,7 +1109,7 @@ export default function Index() {
         </div>
       </div>
       <div 
-        className="mx-auto min-h-screen max-w-lg p-4 pb-20 relative"
+        className="mx-auto min-h-screen max-w-lg px-4 pb-20 pt-[calc(1rem+env(safe-area-inset-top,0px))] relative"
       >
       {/* Header */}
       <div className="mb-5 flex items-center justify-between relative z-50">
@@ -1010,10 +1146,13 @@ export default function Index() {
         <div className="flex flex-col items-end gap-2 relative" ref={menuRef}>
           <div className="flex gap-2">
             <button
-              onClick={fetchDynamicRoutine}
-              disabled={isSyncing}
-              className={`flex items-center justify-center rounded-lg bg-secondary p-2 transition-all hover:bg-secondary/80 ${isSyncing ? "animate-spin opacity-50" : ""}`}
-              title="Refresh from Google Sheet"
+              onClick={() => {
+                fetchDynamicRoutine(semester, section);
+                syncFullRoutineNow();
+              }}
+              disabled={isSyncing || isSyncingFull}
+              className={`flex items-center justify-center rounded-lg bg-secondary p-2 transition-all hover:bg-secondary/80 ${isSyncing || isSyncingFull ? "animate-spin opacity-50" : ""}`}
+              title="Refresh routine from University Portal"
             >
               <RefreshCcw className="h-4 w-4 text-secondary-foreground" />
             </button>
@@ -1093,6 +1232,16 @@ export default function Index() {
                 </button>
               )}
               <div className="border-t my-1"></div>
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  handleInstallApp();
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-secondary font-medium"
+              >
+                <Download className="h-4 w-4 text-primary" />
+                <span>{isInstalled ? "App Installed ✓" : "Install App (PWA)"}</span>
+              </button>
               <button
                 onClick={() => {
                   setIsMenuOpen(false);
@@ -1212,43 +1361,45 @@ export default function Index() {
 
       {/* Student: Semester picker */}
       {role === "student" && (
-        <div className="mb-5 flex gap-3">
-          <div className="flex-1">
-            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Semester</label>
-            <Select 
-              value={String(semester)} 
-              onValueChange={(val) => setSemester(Number(val))}
-            >
-              <SelectTrigger className="font-medium">
-                <SelectValue placeholder="Semester" />
-              </SelectTrigger>
-              <SelectContent>
-                {SEMESTERS.map(sem => (
-                  <SelectItem key={sem} value={String(sem)}>
-                    {sem}{sem === 1 ? 'st' : sem === 2 ? 'nd' : sem === 3 ? 'rd' : 'th'} Semester
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="mb-5">
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Semester</label>
+              <Select 
+                value={String(semester)} 
+                onValueChange={(val) => handleSemesterChange(Number(val))}
+              >
+                <SelectTrigger className="font-medium">
+                  <SelectValue placeholder="Semester" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SEMESTERS.map(sem => (
+                    <SelectItem key={sem} value={String(sem)}>
+                      {sem}{sem === 1 ? 'st' : sem === 2 ? 'nd' : sem === 3 ? 'rd' : 'th'} Semester
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="flex-1">
-            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Section</label>
-            <Select 
-              value={section} 
-              onValueChange={setSection}
-            >
-              <SelectTrigger className="font-medium">
-                <SelectValue placeholder="Section" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableSections.map(sec => (
-                  <SelectItem key={sec} value={sec}>
-                    Section {sec}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex-1">
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Section</label>
+              <Select 
+                value={section} 
+                onValueChange={handleSectionChange}
+              >
+                <SelectTrigger className="font-medium">
+                  <SelectValue placeholder="Section" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableSections.map(sec => (
+                    <SelectItem key={sec} value={sec}>
+                      Section {sec}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       )}
@@ -1338,13 +1489,16 @@ export default function Index() {
             <p className="mx-auto mb-6 max-w-xs text-sm italic leading-relaxed text-muted-foreground">
               "{QUOTES[currentQuoteIndex]}"
             </p>
-            <button 
-              onClick={() => setCurrentQuoteIndex((prev) => (prev + 1) % QUOTES.length)}
-              className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-xs font-semibold text-primary transition-all hover:bg-primary/20"
-            >
-              <RefreshCcw className="h-3 w-3" />
-              Show More Quotes
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <button 
+                onClick={() => setCurrentQuoteIndex((prev) => (prev + 1) % QUOTES.length)}
+                className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-xs font-semibold text-primary transition-all hover:bg-primary/20"
+              >
+                <RefreshCcw className="h-3 w-3" />
+                Show More Quotes
+              </button>
+
+            </div>
           </div>
         )}
       </div>
@@ -1355,9 +1509,24 @@ export default function Index() {
         </DialogTrigger>
         <DialogContent className="sm:max-w-md max-h-[85vh] p-0 flex flex-col">
           <DialogHeader className="p-6 pb-2">
-            <DialogTitle className="font-heading text-xl font-bold flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-blue-500" />
-              Room Finder
+            <DialogTitle className="font-heading text-xl font-bold flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-blue-500" />
+                Room Finder
+              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-900/50">
+                  {allRooms.length} Rooms Analyzed
+                </span>
+                <button
+                  onClick={() => syncFullRoutineNow()}
+                  disabled={isSyncingFull}
+                  title="Re-sync full campus routine"
+                  className={`p-1 text-muted-foreground hover:text-foreground rounded transition-all ${isSyncingFull ? "animate-spin text-primary" : ""}`}
+                >
+                  <RefreshCcw className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto px-6 pb-8">
@@ -1539,92 +1708,152 @@ export default function Index() {
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedEntry} onOpenChange={(open) => !open && setSelectedEntry(null)}>
-        {selectedEntry && (
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="font-heading text-xl font-bold">{selectedEntry.course}</DialogTitle>
-              {COURSE_NAMES[selectedEntry.course] && (
-                <p className="text-sm text-muted-foreground">{COURSE_NAMES[selectedEntry.course]}</p>
-              )}
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <Clock className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">Class Time</p>
-                  <p className="text-sm font-semibold">
-                    {`${selectedEntry.startTime || SLOTS.find(s => s.slot === selectedEntry.slot)?.start} - ${selectedEntry.endTime || SLOTS.find(s => s.slot === selectedEntry.slot)?.end}`}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
-                  <MapPin className="h-5 w-5 text-secondary-foreground" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">Location</p>
-                  <p className="text-sm font-semibold">Room {selectedEntry.room}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
-                  <GraduationCap className="h-5 w-5 text-secondary-foreground" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">Semester & Section</p>
-                  <p className="text-sm font-semibold">
-                    {(() => {
-                      const n = Number(selectedEntry.semester);
-                      let suffix = "th";
-                      if (n === 1) suffix = "st";
-                      else if (n === 2) suffix = "nd";
-                      else if (n === 3) suffix = "rd";
-                      return `${n}${suffix}`;
-                    })()} - {selectedEntry.section}
-                  </p>
-                </div>
-              </div>
+        {selectedEntry && (() => {
+          const courseFullName = selectedEntry.courseName || COURSE_NAMES[selectedEntry.course];
+          
+          // Filter out course names, section names, or invalid non-teacher strings from teachers list
+          const rawTeacherList = Array.isArray(selectedEntry.teachers) ? selectedEntry.teachers : [selectedEntry.teachers];
+          const validTeachers = rawTeacherList.filter(name => {
+            if (!name || typeof name !== "string") return false;
+            const trimmed = name.trim();
+            if (trimmed === "" || trimmed === "TBA") return false;
+            // Exclude if it's identical to course code or course name
+            if (trimmed.toLowerCase() === selectedEntry.course.toLowerCase()) return false;
+            if (courseFullName && trimmed.toLowerCase() === courseFullName.toLowerCase()) return false;
+            // Exclude if it's section/semester string like "7th - Section C" or "Section A"
+            if (/^\d+(?:st|nd|rd|th)?\s*-\s*Section/i.test(trimmed) || /^Section\s+[A-Za-z0-9]/i.test(trimmed)) return false;
+            // Exclude course title keywords if mistaken
+            if (/^(Digital Image Processing|Artificial Intelligence|Computer Networks|Microcontroller|Technical Report Writing|Theory|Lab)/i.test(trimmed)) return false;
+            return true;
+          });
 
-              <div className="space-y-3">
-                <p className="text-xs font-medium text-muted-foreground">Teacher Info</p>
-                {selectedEntry.teachers.map((name, idx) => {
-                  const normName = normalizeTeacherName(cleanTeacherName(name));
-                  const info = teacherInfo.find(t => {
-                    const normTName = normalizeTeacherName(t.name);
-                    const normTInitials = normalizeTeacherName(t.initials || "");
-                    return normTName.includes(normName) || normName.includes(normTName) || (normTInitials && normTInitials === normName);
-                  });
-                  return (
-                    <div key={idx} className="rounded-xl border p-4 space-y-2">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20">
-                          <User className="h-5 w-5 text-primary" />
+          // Clean list - if empty, fallback to "Faculty Member"
+          const displayTeachers = validTeachers.length > 0 
+            ? validTeachers.filter((t, i, arr) => arr.indexOf(t) === i) 
+            : ["Faculty Member"];
+
+          return (
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader className="text-center sm:text-center pb-1">
+                <div className="flex flex-col items-center justify-center gap-1">
+                  <div className="flex items-center justify-center gap-2 flex-wrap">
+                    <DialogTitle className="font-heading text-2xl font-bold text-foreground">
+                      {selectedEntry.course}
+                    </DialogTitle>
+                    {selectedEntry.colspan && selectedEntry.colspan > 1 && (
+                      <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        {selectedEntry.colspan} Slots
+                      </span>
+                    )}
+                    {selectedEntry.combinedGroup && (
+                      <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        {selectedEntry.combinedGroup}
+                      </span>
+                    )}
+                  </div>
+                  {courseFullName && (
+                    <p className="text-sm font-medium text-muted-foreground text-center">
+                      {courseFullName}
+                    </p>
+                  )}
+                </div>
+              </DialogHeader>
+
+              <div className="space-y-4 py-3">
+                {/* Class Time */}
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Clock className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Class Time</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {selectedEntry.slotTime || `${selectedEntry.startTime || SLOTS.find(s => s.slot === selectedEntry.slot)?.start} - ${selectedEntry.endTime || SLOTS.find(s => s.slot === selectedEntry.slot)?.end}`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Location / Room */}
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
+                    <MapPin className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Location</p>
+                    <p className="text-sm font-semibold text-foreground">Room {selectedEntry.room}</p>
+                  </div>
+                </div>
+
+                {/* Semester & Section */}
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
+                    <GraduationCap className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Semester & Section</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {(() => {
+                        const n = Number(selectedEntry.semester);
+                        let suffix = "th";
+                        if (n === 1) suffix = "st";
+                        else if (n === 2) suffix = "nd";
+                        else if (n === 3) suffix = "rd";
+                        return `${n}${suffix}`;
+                      })()} - Section {selectedEntry.section}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Teacher Info */}
+                <div className="space-y-2.5 pt-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Teacher Info
+                  </p>
+                  {displayTeachers.map((name, idx) => {
+                    const normName = normalizeTeacherName(cleanTeacherName(name));
+                    const info = teacherInfo.find(t => {
+                      const normTName = normalizeTeacherName(t.name);
+                      const normTInitials = normalizeTeacherName(t.initials || "");
+                      return normTName.includes(normName) || normName.includes(normTName) || (normTInitials && normTInitials === normName);
+                    });
+                    const displayName = cleanTeacherName(info?.name || name);
+                    const designation = info?.designation || (displayName === "Faculty Member" ? "" : "Lecturer");
+
+                    return (
+                      <div key={idx} className="rounded-xl border p-3.5 space-y-2.5 bg-card shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                            <User className="h-5 w-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-foreground truncate">
+                              {displayName}
+                            </p>
+                            {designation && (
+                              <p className="text-xs text-muted-foreground truncate">
+                                {designation}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-bold">{cleanTeacherName(info?.name || name)}</p>
-                          <p className="text-xs text-muted-foreground">{info?.designation || "Faculty Member"}</p>
-                        </div>
+
+                        {info?.phone && (
+                          <a 
+                            href={`tel:${normalizeBangladeshiPhone(info.phone)}`}
+                            className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary/10 p-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 active:scale-[0.98]"
+                          >
+                            <Phone className="h-3.5 w-3.5 shrink-0" />
+                            <span>{normalizeBangladeshiPhone(info.phone)}</span>
+                          </a>
+                        )}
                       </div>
-                      {info?.phone && (
-                        <a 
-                          href={`tel:${normalizeBangladeshiPhone(info.phone)}`}
-                          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-primary/10 p-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
-                        >
-                          <Phone className="h-3.5 w-3.5 shrink-0" />
-                          <span>{normalizeBangladeshiPhone(info.phone)}</span>
-                        </a>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          </DialogContent>
-        )}
+            </DialogContent>
+          );
+        })()}
       </Dialog>
 
       {/* Teacher Directory Dialog */}
@@ -2030,6 +2259,18 @@ export default function Index() {
         </DialogContent>
       </Dialog>
 
+
+
+      {/* PWA Install Dialog */}
+      <PWAInstallDialog
+        open={isPWAInstallDialogOpen}
+        onOpenChange={setIsPWAInstallDialogOpen}
+        isInstalled={isInstalled}
+        isInstallable={isInstallable}
+        isIOS={isIOS}
+        onInstall={handleInstallApp}
+      />
+
       {/* Admin Panel Dialog */}
       <Dialog open={isAdminDialogOpen} onOpenChange={setIsAdminDialogOpen}>
         <DialogContent className="sm:max-w-md max-h-[90vh] p-0 flex flex-col">
@@ -2107,6 +2348,21 @@ export default function Index() {
                     onChange={(e) => setNewInfoGid(e.target.value)}
                     className="w-full rounded-xl border bg-card p-2.5 text-sm outline-none focus:border-primary"
                   />
+                </div>
+
+                <div className="pt-2 border-t space-y-1">
+                  <h5 className="text-xs font-bold uppercase text-muted-foreground">University Routine Endpoint Settings</h5>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Portal Session Cookie (easymate_session)</label>
+                  <input
+                    type="password"
+                    placeholder="Paste easymate_session cookie if required..."
+                    value={newEasymateSession}
+                    onChange={(e) => setNewEasymateSession(e.target.value)}
+                    className="w-full rounded-xl border bg-card p-2.5 text-xs outline-none focus:border-primary font-mono"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Direct endpoint: <code>/front/student/routine/load?semester_id=&section_id=</code>
+                  </p>
                 </div>
                 
                 <h5 className="text-xs font-bold uppercase text-muted-foreground pt-2 border-t">Developer Section Info</h5>
@@ -2273,7 +2529,7 @@ export default function Index() {
             <label className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">Semester</label>
             <Select 
               value={String(semester)} 
-              onValueChange={(val) => setSemester(Number(val))}
+              onValueChange={(val) => handleSemesterChange(Number(val))}
             >
               <SelectTrigger className="font-medium h-11">
                 <SelectValue placeholder="Select Semester" />
@@ -2292,7 +2548,7 @@ export default function Index() {
             <label className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">Section</label>
             <Select 
               value={section} 
-              onValueChange={setSection}
+              onValueChange={handleSectionChange}
             >
               <SelectTrigger className="font-medium h-11">
                 <SelectValue placeholder="Select Section" />
@@ -2326,7 +2582,7 @@ export default function Index() {
     </Dialog>
 
     {/* Floating AI Assistant Widget */}
-    <AiAssistant routineData={currentRoutine} semester={semester} section={section} teacherInfo={teacherInfo} />
+    <AiAssistant routineData={fullRoutine} semester={semester} section={section} teacherInfo={teacherInfo} />
     
     {onboardingState === "GUIDED_TOUR" && (
       <GuidedTour 

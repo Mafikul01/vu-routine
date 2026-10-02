@@ -181,27 +181,27 @@ export function AiAssistant({ routineData, semester, section, teacherInfo }: AiA
       },
       {
         keywords: ["slot 1 time", "when is slot 1", "what time is slot 1"],
-        text: "Slot 1 is from 09:00 AM to 10:00 AM."
+        text: "Slot 1 is from 09:00 AM to 10:15 AM."
       },
       {
          keywords: ["slot 2 time", "when is slot 2", "what time is slot 2"],
-         text: "Slot 2 is from 10:05 AM to 11:05 AM."
+         text: "Slot 2 is from 10:15 AM to 11:30 AM."
       },
       {
          keywords: ["slot 3 time", "when is slot 3", "what time is slot 3"],
-         text: "Slot 3 is from 11:10 AM to 12:10 PM."
+         text: "Slot 3 is from 11:30 AM to 12:45 PM."
       },
       {
          keywords: ["slot 4 time", "when is slot 4", "what time is slot 4"],
-         text: "Slot 4 is from 12:15 PM to 01:15 PM."
+         text: "Slot 4 is from 01:15 PM to 02:30 PM."
       },
       {
          keywords: ["slot 5 time", "when is slot 5", "what time is slot 5"],
-         text: "Slot 5 is from 01:50 PM to 02:50 PM."
+         text: "Slot 5 is from 02:30 PM to 03:45 PM."
       },
       {
          keywords: ["slot 6 time", "when is slot 6", "what time is slot 6"],
-         text: "Slot 6 is from 02:55 PM to 03:55 PM."
+         text: "Slot 6 is from 03:45 PM to 05:00 PM."
       },
       {
         keywords: ["who are you", "what is your name", "what can you do"],

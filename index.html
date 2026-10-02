@@ -8,8 +8,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="description" content="View your class routine">
     <meta name="author" content="Lovable" />
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#020817" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ffffff" id="theme-color-meta" />
 
     <script>
       (function() {
@@ -19,11 +18,35 @@
           if (theme === 'system') {
             activeTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
           }
+          var isDark = activeTheme === 'dark';
+          document.documentElement.classList.remove('light', 'dark');
           document.documentElement.classList.add(activeTheme);
+          document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+          
+          var color = isDark ? '#020817' : '#ffffff';
           var metas = document.querySelectorAll('meta[name="theme-color"]');
-          metas.forEach(function(meta) {
-            meta.setAttribute('content', activeTheme === 'dark' ? '#020817' : '#ffffff');
+          var found = false;
+          metas.forEach(function(meta, idx) {
+            if (idx === 0) {
+              meta.removeAttribute('media');
+              meta.setAttribute('content', color);
+              found = true;
+            } else {
+              meta.remove();
+            }
           });
+          if (!found) {
+            var meta = document.createElement('meta');
+            meta.setAttribute('name', 'theme-color');
+            meta.setAttribute('id', 'theme-color-meta');
+            meta.setAttribute('content', color);
+            document.head.appendChild(meta);
+          }
+          
+          var appleMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+          if (appleMeta) {
+            appleMeta.setAttribute('content', isDark ? 'black-translucent' : 'default');
+          }
         } catch (e) {}
       })();
     </script>
@@ -45,12 +68,42 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=search_insights" />
   
   <script>
-    function sendThemeToApp() {
+    function syncThemeState() {
       const isDark =
         document.documentElement.classList.contains("dark") ||
         document.body.classList.contains("dark");
 
       const theme = isDark ? "dark" : "light";
+      const color = isDark ? "#020817" : "#ffffff";
+
+      // Keep CSS color-scheme synchronized for Android/Chrome UI
+      document.documentElement.style.colorScheme = theme;
+
+      // Keep single theme-color meta tag synchronized without media queries
+      const metas = document.querySelectorAll('meta[name="theme-color"]');
+      let found = false;
+      metas.forEach((meta, idx) => {
+        if (idx === 0) {
+          meta.removeAttribute("media");
+          meta.setAttribute("content", color);
+          found = true;
+        } else {
+          meta.remove();
+        }
+      });
+      if (!found) {
+        const meta = document.createElement("meta");
+        meta.setAttribute("name", "theme-color");
+        meta.setAttribute("id", "theme-color-meta");
+        meta.setAttribute("content", color);
+        document.head.appendChild(meta);
+      }
+
+      // iOS status bar style
+      const appleMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+      if (appleMeta) {
+        appleMeta.setAttribute("content", isDark ? "black-translucent" : "default");
+      }
 
       // Safe check for Flutter WebView channel
       if (window.ThemeChannel && window.ThemeChannel.postMessage) {
@@ -63,7 +116,7 @@
 
     function safeSendTheme() {
       clearTimeout(themeTimeout);
-      themeTimeout = setTimeout(sendThemeToApp, 100);
+      themeTimeout = setTimeout(syncThemeState, 50);
     }
 
     // 1. Send theme on page load

@@ -19,8 +19,9 @@ interface ClassCardProps {
 
 export function ClassCard({ entry, showSection = false, teacherInfo = [] }: ClassCardProps) {
   const slotInfo = SLOTS.find(s => s.slot === entry.slot);
-  const displayStartTime = entry.startTime || entry.slotTime || slotInfo?.start;
+  const displayStartTime = entry.startTime || slotInfo?.start;
   const displayEndTime = entry.endTime || slotInfo?.end;
+  const timeText = entry.slotTime || (displayStartTime && displayEndTime ? `${displayStartTime} - ${displayEndTime}` : displayStartTime || displayEndTime || `Slot ${entry.slot}`);
 
   const getOrdinal = (n: number) => {
     if (n === 1) return "1st";
@@ -47,10 +48,20 @@ export function ClassCard({ entry, showSection = false, teacherInfo = [] }: Clas
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1 flex flex-col items-start gap-1.5">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center flex-wrap gap-1.5">
             <span className="text-sm font-bold text-foreground items-center gap-1.5 flex bg-primary/5 px-2 py-0.5 rounded-md text-primary">
-              {displayStartTime} - {displayEndTime}
+              {timeText}
             </span>
+            {entry.colspan && entry.colspan > 1 && (
+              <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                {entry.colspan} Slots
+              </span>
+            )}
+            {entry.combinedGroup && (
+              <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                {entry.combinedGroup}
+              </span>
+            )}
           </div>
           <h3 className="font-heading font-bold text-base leading-tight text-foreground flex items-center flex-wrap gap-2">
             <span>{entry.course}</span>
@@ -65,9 +76,9 @@ export function ClassCard({ entry, showSection = false, teacherInfo = [] }: Clas
               </span>
             )}
           </h3>
-          {COURSE_NAMES[entry.course] && (
+          {(entry.courseName || COURSE_NAMES[entry.course]) && (
             <p className="text-xs text-muted-foreground/90 font-medium italic">
-              {COURSE_NAMES[entry.course]}
+              {entry.courseName || COURSE_NAMES[entry.course]}
             </p>
           )}
           <p className="text-xs text-muted-foreground font-semibold flex items-center gap-1">
